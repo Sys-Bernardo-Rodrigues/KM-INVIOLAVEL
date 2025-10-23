@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Uso de Veículo</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="login-body">
+  <div class="login-container" style="max-width: 700px; text-align: left;">
+    <h2><i class="fas fa-car"></i> Registro de Uso de Veículo</h2>
+
+    <div class="form-group">
+      <label for="vtr_id">Selecione o Veículo</label>
+      <select id="vtr_id" name="vtr_id" required>
+        <option value="">-- Escolha um VTR --</option>
+        <% vtrs.forEach(vtr => { %>
+          <option value="<%= vtr.id %>"><%= vtr.numero_vtr %> - <%= vtr.modelo %></option>
+        <% }) %>
+      </select>
+    </div>
+
+    <form id="form-abertura" class="vtr-form" style="display: none;">
+      <input type="hidden" name="vtr_id" id="abertura_vtr_id">
+      <h3><i class="fas fa-door-open"></i> Abertura de Uso</h3>
+      <div class="form-group">
+        <label for="km_inicial" id="label_km_inicial">KM Inicial</label>
+        <input type="number" name="km_inicial" id="km_inicial" required>
+      </div>
+      <div class="form-group">
+        <label for="vigilante_inicio">Nome do Motorista</label>
+        <input type="text" name="vigilante_inicio" id="vigilante_inicio" required>
+      </div>
+      <button type="submit">Abrir Uso</button>
+    </form>
+
+    <form id="form-encerramento" class="vtr-form" style="display: none;">
+      <input type="hidden" name="uso_id" id="uso_id">
+      <h3><i class="fas fa-door-closed"></i> Encerramento de Uso</h3>
+      <div class="form-group">
+        <label for="km_final" id="label_km_final">KM Final</label>
+        <input type="number" name="km_final" id="km_final" required>
+      </div>
+      <div class="form-group">
+        <label>Precisa abastecer?</label>
+        <select name="abastecimento" id="abastecimento" required>
+          <option value="">Selecione</option>
+          <option value="Sim">Sim</option>
+          <option value="Não">Não</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Encontrou avarias?</label>
+        <select name="avarias" id="avarias" required>
+          <option value="">Selecione</option>
+          <option value="Sim">Sim</option>
+          <option value="Não">Não</option>
+        </select>
+      </div>
+      <div class="form-group" id="observacoes-box" style="display: none;">
+        <label for="observacoes">Descreva as Avarias</label>
+        <input type="text" name="observacoes" id="observacoes">
+      </div>
+      <div class="form-group">
+        <label for="vigilante_fim">Nome do Motoriata</label>
+        <input type="text" name="vigilante_fim" id="vigilante_fim" required>
+      </div>
+      <button type="submit">Encerrar Uso</button>
+    </form>
+
+    <form id="form-reabertura" class="vtr-form" style="display: none;">
+      <input type="hidden" name="vtr_id" id="reabertura_vtr_id">
+      <h3><i class="fas fa-redo"></i> Abertura Imediata</h3>
+      <div class="form-group">
+        <label for="km_inicial2">KM Inicial</label>
+        <input type="number" name="km_inicial" id="km_inicial2" required>
+      </div>
+      <div class="form-group">
+        <label for="vigilante_inicio2">Nome do Motorista</label>
+        <input type="text" name="vigilante_inicio" id="vigilante_inicio2" required>
+      </div>
+      <button type="submit">Abrir Novo Uso</button>
+    </form>
+  </div>
+
+  <div id="popup-msg" style="display:none;position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#10b981;color:white;padding:12px 20px;border-radius:8px;z-index:999;font-weight:bold;box-shadow:0 0 10px rgba(0,0,0,0.2);"></div>
+
+  <script>
+    const vtrSelect = document.getElementById('vtr_id');
+    const formAbertura = document.getElementById('form-abertura');
+    const formEncerramento = document.getElementById('form-encerramento');
+    const formReabertura = document.getElementById('form-reabertura');
+    const observacoesBox = document.getElementById('observacoes-box');
+    const popupMsg = document.getElementById('popup-msg');
+    const labelKmFinal = document.getElementById('label_km_final');
+    const labelKmInicial = document.getElementById('label_km_inicial');
+
+    let kmInicialAtual = null;
+    let ultimoKmFinal = 0;
+
+    vtrSelect.addEventListener('change', async () => {
+      const vtrId = vtrSelect.value;
+      if (!vtrId) return;
+
+      const res = await fetch(`/status-veiculo/${vtrId}`);
+      const uso = await res.json();
+
+      formAbertura.style.display = 'none';
+      formEncerramento.style.display = 'none';
+      formReabertura.style.display = 'none';
+
+      if (uso) {
+        document.getElementById('uso_id').value = uso.id;
+        document.getElementById('km_final').value = '';
+        // Removido: restrição de mínimo para permitir valores menores
+        document.getElementById('km_final').removeAttribute('min');
+        labelKmFinal.textContent = 'KM Final';
+        kmInicialAtual = uso.km_inicial;
+        ultimoKmFinal = uso.km_inicial;
+        formEncerramento.style.display = 'block';
+      } else {
+        document.getElementById('abertura_vtr_id').value = vtrId;
+        kmInicialAtual = null;
+
+        // NOVO: buscar diretamente o KM final da API dedicada
+        try {
+          const resKm = await fetch(`/ultimo-km/${vtrId}`);
+          const dataKm = await resKm.json();
+          ultimoKmFinal = dataKm.km_final || 0;
+        } catch (err) {
+          ultimoKmFinal = 0;
+        }
+
+        // Removido: restrição de mínimo para permitir valores menores
+        document.getElementById('km_inicial').removeAttribute('min');
+        labelKmInicial.textContent = 'KM Inicial';
+        formAbertura.style.display = 'block';
+      }
+    });
+
+    document.getElementById('avarias').addEventListener('change', e => {
+      observacoesBox.style.display = e.target.value === 'Sim' ? 'block' : 'none';
+      document.getElementById('observacoes').required = e.target.value === 'Sim';
+    });
+
+    async function enviarJsonFormulario(form, endpoint, sucessoMsg) {
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData.entries());
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      if (res.ok) showPopup(sucessoMsg);
+      else showPopup('Erro ao processar o formulário');
+    }
+
+    formAbertura.addEventListener('submit', e => {
+      e.preventDefault();
+      const kmInicial = parseInt(document.getElementById('km_inicial').value);
+      if (kmInicial < ultimoKmFinal) {
+        alert(`O KM inicial deve ser maior ou igual a ${ultimoKmFinal}.`);
+        return;
+      }
+      enviarJsonFormulario(formAbertura, '/abrir-uso', 'Veículo aberto para uso.');
+    });
+
+    formEncerramento.addEventListener('submit', e => {
+      e.preventDefault();
+      const kmFinal = parseInt(document.getElementById('km_final').value);
+      if (kmInicialAtual !== null && kmFinal < kmInicialAtual) {
+        alert('O KM final não pode ser menor que o KM inicial.');
+        return;
+      }
+      enviarJsonFormulario(formEncerramento, '/encerrar-uso', 'Veículo fechado com sucesso.');
+    });
+
+    formReabertura.addEventListener('submit', e => {
+      e.preventDefault();
+      enviarJsonFormulario(formReabertura, '/abrir-uso', 'Veículo reaberto para novo uso.');
+    });
+
+    function showPopup(texto) {
+      popupMsg.innerText = texto;
+      popupMsg.style.display = 'block';
+      setTimeout(() => {
+        popupMsg.style.display = 'none';
+        location.reload();
+      }, 2000);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,223 @@
+<!-- cadastrar-carro.ejs -->
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Cadastrar VTR</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="alternate icon" href="/favicon.ico" sizes="any">
+  <meta name="theme-color" content="#111827">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="topnav">
+    <div class="brand"><i class="fas fa-car"></i> KM Control</div>
+    <ul>
+      <li><a href="/dashboard"><i class="fas fa-chart-bar"></i> Dashboard</a></li>
+      <li><a href="/cadastrar-carro"><i class="fas fa-car"></i> Cadastrar Carro</a></li>
+      <li><a href="/historico"><i class="fas fa-clock-rotate-left"></i> Histórico</a></li>
+      <% if (role === 'Administrador') { %>
+        <li><a href="/admin/cadastrar-usuario"><i class="fas fa-user-plus"></i> Cadastrar Usuário</a></li>
+      <% } %>
+      <li><a href="/logout"><i class="fas fa-right-from-bracket"></i> Sair</a></li>
+    </ul>
+  </div>
+  <div class="main-content">
+    <div class="toolbar">
+      <div class="page-title"><i class="fas fa-car"></i> Cadastro de Veículo</div>
+      <button id="open-create-vtr" class="btn btn-primary"><i class="fas fa-plus"></i> Cadastrar Veículo</button>
+    </div>
+    <% if (mensagem) { %>
+      <p class="mensagem"><%= mensagem %></p>
+    <% } %>
+    <!-- Modal de cadastro de veículo -->
+    <div id="create-vtr-backdrop" class="modal-backdrop" aria-hidden="true"></div>
+    <div id="create-vtr-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="create-vtr-title" style="display:none;">
+      <header>
+        <div id="create-vtr-title" class="title"><i class="fas fa-car"></i> Novo Veículo</div>
+        <button id="close-create-vtr" class="close-btn" aria-label="Fechar">
+          <i class="fas fa-times"></i>
+        </button>
+      </header>
+      <div class="content">
+        <form action="/cadastrar-carro" method="POST" class="vtr-form">
+          <div class="form-group">
+            <label for="numero_vtr">Número do VTR</label>
+            <input type="text" name="numero_vtr" id="numero_vtr" required>
+          </div>
+          <div class="form-group">
+            <label for="tipo">Tipo</label>
+            <select name="tipo" id="tipo" required>
+              <option value="">Selecione</option>
+              <option value="Carro">Carro</option>
+              <option value="Moto">Moto</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="modelo">Modelo</label>
+            <input type="text" name="modelo" id="modelo" required>
+          </div>
+          <button type="submit">Cadastrar Veículo</button>
+        </form>
+      </div>
+    </div>
+
+    <% if (vtrs && vtrs.length > 0) { %>
+      <div class="section-title"><i class="fas fa-list"></i> Veículos Cadastrados</div>
+      <div class="table-card">
+      <table class="user-table">
+        <thead>
+          <tr>
+            <th>Número VTR</th>
+            <th>Tipo</th>
+            <th>Modelo</th>
+            <th>KM Atual</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% vtrs.forEach(vtr => { %>
+            <tr>
+              <td><%= vtr.numero_vtr %></td>
+              <td><%= vtr.tipo %></td>
+              <td><%= vtr.modelo %></td>
+              <td>
+                <span class="km-info" data-vtr-id="<%= vtr.id %>">
+                  <i class="fas fa-gauge"></i> Carregando...
+                </span>
+              </td>
+              <td>
+                <span class="status-info" data-vtr-id="<%= vtr.id %>">
+                  <i class="fas fa-circle-notch fa-spin"></i> Verificando...
+                </span>
+              </td>
+              <td>
+                <form action="/deletar-carro" method="POST" class="inline-form">
+                  <input type="hidden" name="id" value="<%= vtr.id %>">
+                  <button type="submit" class="btn-delete btn-icon" aria-label="Excluir" title="Excluir"><i class="fas fa-trash"></i></button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      </div>
+      <!-- Modal de confirmação de exclusão -->
+      <div id="confirm-delete-backdrop" class="modal-backdrop" aria-hidden="true"></div>
+      <div id="confirm-delete-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-delete-title" style="display:none;">
+        <header>
+          <div id="confirm-delete-title" class="title"><i class="fas fa-trash"></i> Excluir VTR</div>
+          <button id="close-confirm-delete" class="close-btn" aria-label="Fechar">
+            <i class="fas fa-times"></i>
+          </button>
+        </header>
+        <div class="content">
+          <p id="confirm-delete-message" style="margin-bottom:16px;">Tem certeza que deseja excluir este VTR?</p>
+          <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button id="cancel-delete" class="btn btn-icon" aria-label="Cancelar" title="Cancelar"><i class="fas fa-times"></i></button>
+            <button id="confirm-delete" class="btn btn-danger btn-icon" aria-label="Excluir" title="Excluir"><i class="fas fa-trash"></i></button>
+          </div>
+        </div>
+      </div>
+
+      
+    <% } %>
+  </div>
+  <script>
+    // Controle do modal de cadastro
+    const openBtn = document.getElementById('open-create-vtr');
+    const modal = document.getElementById('create-vtr-modal');
+    const backdrop = document.getElementById('create-vtr-backdrop');
+    const closeBtn = document.getElementById('close-create-vtr');
+
+    function openModal() {
+      modal.style.display = 'block';
+      backdrop.classList.add('open');
+    }
+    function closeModal() {
+      modal.style.display = 'none';
+      backdrop.classList.remove('open');
+    }
+    openBtn?.addEventListener('click', openModal);
+    closeBtn?.addEventListener('click', closeModal);
+    backdrop?.addEventListener('click', closeModal);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+    // KM atual removido da visualização no cadastro de carros
+
+    // Confirmação de exclusão
+    const confirmModal = document.getElementById('confirm-delete-modal');
+    const confirmBackdrop = document.getElementById('confirm-delete-backdrop');
+    const confirmCloseBtn = document.getElementById('close-confirm-delete');
+    const confirmMsg = document.getElementById('confirm-delete-message');
+    const confirmBtn = document.getElementById('confirm-delete');
+    const cancelBtn = document.getElementById('cancel-delete');
+    let pendingDeleteForm = null;
+
+    function openConfirm(message, form) {
+      pendingDeleteForm = form;
+      confirmMsg.textContent = message || 'Tem certeza que deseja excluir este VTR?';
+      confirmModal.style.display = 'block';
+      confirmBackdrop.classList.add('open');
+    }
+    function closeConfirm() {
+      confirmModal.style.display = 'none';
+      confirmBackdrop.classList.remove('open');
+      pendingDeleteForm = null;
+    }
+
+    // Intercepta botões de excluir da lista
+    document.querySelectorAll('.inline-form .btn-delete').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const form = e.currentTarget.closest('form');
+        const row = form.closest('tr');
+        const numero = row?.querySelector('td:nth-child(1)')?.textContent?.trim();
+        openConfirm(`Tem certeza que deseja excluir o VTR ${numero}?`, form);
+      });
+    });
+
+    confirmBtn.addEventListener('click', () => {
+      if (pendingDeleteForm) pendingDeleteForm.submit();
+      closeConfirm();
+    });
+    cancelBtn.addEventListener('click', closeConfirm);
+    confirmCloseBtn.addEventListener('click', closeConfirm);
+    confirmBackdrop.addEventListener('click', closeConfirm);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeConfirm(); });
+
+    // Editar KM removido
+
+    // Preencher KM Atual e Status de cada VTR
+    document.querySelectorAll('.km-info').forEach(async (el) => {
+      const vtrId = el.getAttribute('data-vtr-id');
+      try {
+        const res = await fetch(`/ultimo-km/${vtrId}`, { cache: 'no-store' });
+        const data = await res.json();
+        const km = Number(data?.km_final) || 0;
+        el.innerHTML = `<i class="fas fa-gauge"></i> ${km} km`;
+      } catch (err) {
+        el.innerHTML = `<i class="fas fa-triangle-exclamation"></i> N/D`;
+      }
+    });
+
+    document.querySelectorAll('.status-info').forEach(async (el) => {
+      const vtrId = el.getAttribute('data-vtr-id');
+      try {
+        const res = await fetch(`/status-veiculo/${vtrId}`, { cache: 'no-store' });
+        const uso = await res.json();
+        if (uso && uso.em_uso === 1) {
+          el.innerHTML = `<i class="fas fa-person-walking"></i> Em uso`;
+        } else {
+          el.innerHTML = `<i class="fas fa-circle-check"></i> Disponível`;
+        }
+      } catch (err) {
+        el.innerHTML = `<i class="fas fa-triangle-exclamation"></i> N/D`;
+      }
+    });
+  </script>
+</body>
+</html>

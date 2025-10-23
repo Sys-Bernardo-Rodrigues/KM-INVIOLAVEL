@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Uso de Veículo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="alternate icon" href="/favicon.ico" sizes="any">
+  <meta name="theme-color" content="#111827">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Uso de Veículo - Lista de usos ativos */
+    .active-uses { margin-top: 16px; }
+    .active-uses h3 {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 16px; margin: 16px 0 10px; color: var(--text);
+    }
+    .use-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+    }
+    .use-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: var(--shadow);
+    }
+    .use-header {
+      display: flex; align-items: center; gap: 8px;
+      font-weight: 600; color: var(--text);
+    }
+    .use-header i { color: #374151; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700;
+      border: 1px solid var(--border); color: var(--text); margin-left: auto;
+    }
+    .badge.in-use { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+    .use-body {
+      display: flex; flex-direction: column; gap: 6px; margin-top: 8px;
+      color: var(--muted); font-size: 13px;
+    }
+    .use-body .model, .use-body .start, .use-body .km {
+      display: flex; align-items: center; gap: 6px;
+    }
+  </style>
+</head>
+
+
+<body>
+  <div class="topnav">
+    <div class="brand"><i class="fas fa-car"></i> KM Control</div>
+    <ul>
+      <% if (role !== 'USUARIO') { %>
+        <li><a href="/dashboard"><i class="fas fa-chart-bar"></i> Dashboard</a></li>
+        <li><a href="/cadastrar-carro"><i class="fas fa-car"></i> Cadastrar Carro</a></li>
+        <li><a href="/historico"><i class="fas fa-clock-rotate-left"></i> Histórico</a></li>
+        <% if (role === 'Administrador') { %>
+          <li><a href="/admin/cadastrar-usuario"><i class="fas fa-user-plus"></i> Cadastrar Usuário</a></li>
+        <% } %>
+      <% } %>
+      <li><a href="/logout"><i class="fas fa-right-from-bracket"></i> Sair</a></li>
+    </ul>
+  </div>
+
+  <div class="main-content">
+    <div class="page-title"><i class="fas fa-car" aria-hidden="true"></i> Registro de Uso de Veículo</div>
+    <div class="form-card" aria-label="Registro de Uso de Veículo">
+
+      <div class="vtr-form">
+        <div class="form-group">
+          <label for="vtr_id">Selecione o Veículo</label>
+          <select id="vtr_id" name="vtr_id" required>
+            <option value="">-- Escolha um VTR --</option>
+            <% vtrs.forEach(vtr => { %>
+              <option value="<%= vtr.id %>"><%= vtr.numero_vtr %> - <%= vtr.modelo %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div id="uso_info" class="alert info hidden" role="alert" aria-live="assertive">
+          <i class="fas fa-circle-info" aria-hidden="true"></i>
+          <span id="uso_info_text"></span>
+        </div>
+      </div>
+
+      <div class="vtr-form" aria-label="Meus veículos em uso">
+        <h3><i class="fas fa-person-walking" aria-hidden="true"></i> Meus Veículos em Uso</h3>
+        <% if (usos_ativos && usos_ativos.length > 0) { %>
+          <div class="use-cards">
+            <% usos_ativos.forEach(uso => { %>
+              <div class="use-card">
+                <div class="use-header">
+                  <i class="fas fa-car" aria-hidden="true"></i>
+                  <span><%= uso.numero_vtr %></span>
+                  <span class="badge in-use">Em uso</span>
+                </div>
+                <div class="use-body">
+                  <div class="model"><i class="fas fa-tag" aria-hidden="true"></i> <%= uso.modelo %></div>
+                  <div class="start"><i class="fas fa-clock" aria-hidden="true"></i> Iniciado: <%= uso.data_inicio %></div>
+                  <div class="km"><i class="fas fa-road" aria-hidden="true"></i> KM Inicial: <%= uso.km_inicial %></div>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        <% } else { %>
+          <div class="form-help">Você não possui veículos em uso no momento.</div>
+        <% } %>
+      </div>
+    </div>
+
+    <div id="card-abertura" class="form-card hidden">
+    <form id="form-abertura" class="vtr-form hidden">
+      <input type="hidden" name="vtr_id" id="abertura_vtr_id">
+      <h3><i class="fas fa-door-open"></i> Abertura de Uso</h3>
+      <div class="form-group">
+        <label for="km_inicial" id="label_km_inicial">KM Inicial</label>
+        <input type="number" name="km_inicial" id="km_inicial" required min="0" step="1" inputmode="numeric">
+        <div id="km_hint" class="form-help hidden"></div>
+      </div>
+      <div class="form-group">
+        <label for="vigilante_inicio">Nome do Motorista</label>
+        <input type="text" name="vigilante_inicio" id="vigilante_inicio" required autocomplete="name" value="<%= username %>" readonly>
+      </div>
+      <button type="submit" class="btn btn-purple full">Abrir Uso</button>
+    </form>
+    </div>
+
+    <div id="card-encerramento" class="form-card hidden">
+    <form id="form-encerramento" class="vtr-form hidden">
+      <input type="hidden" name="uso_id" id="uso_id">
+      <h3><i class="fas fa-door-closed"></i> Encerramento de Uso</h3>
+      <div class="form-group">
+        <label for="km_final" id="label_km_final">KM Final</label>
+        <input type="number" name="km_final" id="km_final" required min="0" step="1" inputmode="numeric">
+      </div>
+      <div class="form-group">
+        <label>Necessário abastecer</label>
+        <select name="abastecimento" id="abastecimento" required>
+          <option value="">Selecione</option>
+          <option value="Sim">Sim</option>
+          <option value="Não">Não</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Encontrou avarias?</label>
+        <select name="avarias" id="avarias" required>
+          <option value="">Selecione</option>
+          <option value="Sim">Sim</option>
+          <option value="Não">Não</option>
+        </select>
+      </div>
+      <div class="form-group hidden" id="observacoes-box">
+        <label for="observacoes">Descreva as Avarias</label>
+        <input type="text" name="observacoes" id="observacoes">
+      </div>
+      <div class="form-group">
+        <label for="vigilante_fim">Nome do Motorista</label>
+        <input type="text" name="vigilante_fim" id="vigilante_fim" required autocomplete="name" value="<%= username %>" readonly>
+      </div>
+      <button type="submit" class="btn btn-purple full">Encerrar Uso</button>
+    </form>
+    </div>
+
+    <div id="card-reabertura" class="form-card hidden">
+    <form id="form-reabertura" class="vtr-form hidden">
+      <input type="hidden" name="vtr_id" id="reabertura_vtr_id">
+      <h3><i class="fas fa-redo"></i> Abertura Imediata</h3>
+      <div class="form-group">
+        <label for="km_inicial2">KM Inicial</label>
+        <input type="number" name="km_inicial" id="km_inicial2" required min="0" step="1" inputmode="numeric">
+      </div>
+      <div class="form-group">
+        <label for="vigilante_inicio2">Nome do Motorista</label>
+        <input type="text" name="vigilante_inicio" id="vigilante_inicio2" required autocomplete="name" value="<%= username %>" readonly>
+      </div>
+      <button type="submit" class="btn btn-purple full">Abrir Novo Uso</button>
+    </form>
+    </div>
+  </div>
+
+  <div id="popup-msg" class="popup-msg hidden" role="status" aria-live="polite"></div>
+
+  <script>
+    const currentUser = '<%= username %>';
+    const currentRole = '<%= role %>';
+    const vtrSelect = document.getElementById('vtr_id');
+    const formAbertura = document.getElementById('form-abertura');
+    const formEncerramento = document.getElementById('form-encerramento');
+    const formReabertura = document.getElementById('form-reabertura');
+    const cardAbertura = document.getElementById('card-abertura');
+    const cardEncerramento = document.getElementById('card-encerramento');
+    const cardReabertura = document.getElementById('card-reabertura');
+    const observacoesBox = document.getElementById('observacoes-box');
+    const popupMsg = document.getElementById('popup-msg');
+    const kmHint = document.getElementById('km_hint');
+    const usoInfo = document.getElementById('uso_info');
+    const usoInfoText = document.getElementById('uso_info_text');
+    const labelKmFinal = document.getElementById('label_km_final');
+    const labelKmInicial = document.getElementById('label_km_inicial');
+
+    let kmInicialAtual = null;
+    let ultimoKmFinal = 0;
+
+    vtrSelect.addEventListener('change', async () => {
+      const vtrId = vtrSelect.value;
+      if (!vtrId) return;
+
+      const res = await fetch(`/status-veiculo/${vtrId}`);
+      const uso = await res.json();
+
+      formAbertura.classList.add('hidden');
+      formEncerramento.classList.add('hidden');
+      formReabertura.classList.add('hidden');
+      cardAbertura.classList.add('hidden');
+      cardEncerramento.classList.add('hidden');
+      cardReabertura.classList.add('hidden');
+      usoInfo.classList.add('hidden');
+
+      if (uso) {
+        // Se há uso ativo:
+        // - USUARIO: só pode encerrar se for quem abriu
+        // - BASE/Admin: pode encerrar qualquer veículo
+        const canOverride = (currentRole !== 'USUARIO');
+        if (uso.vigilante_inicio === currentUser || canOverride) {
+          document.getElementById('uso_id').value = uso.id;
+          document.getElementById('km_final').value = '';
+          document.getElementById('km_final').removeAttribute('min');
+          labelKmFinal.textContent = 'KM Final';
+          kmInicialAtual = uso.km_inicial;
+          ultimoKmFinal = uso.km_inicial;
+          formEncerramento.classList.remove('hidden');
+          cardEncerramento.classList.remove('hidden');
+        } else {
+          // Usuário diferente: exibir mensagem em alerta visível e manter formulários ocultos
+          usoInfoText.textContent = `Veículo em uso por ${uso.vigilante_inicio}. Aguarde o encerramento.`;
+          usoInfo.classList.remove('hidden');
+        }
+      } else {
+        document.getElementById('abertura_vtr_id').value = vtrId;
+        kmInicialAtual = null;
+
+        // NOVO: buscar diretamente o KM final da API dedicada
+        try {
+          const resKm = await fetch(`/ultimo-km/${vtrId}`, { cache: 'no-store' });
+          const dataKm = await resKm.json();
+          ultimoKmFinal = dataKm.km_final || 0;
+        } catch (err) {
+          ultimoKmFinal = 0;
+        }
+
+        labelKmInicial.textContent = 'KM Inicial';
+        kmHint.textContent = `Último KM registrado: ${ultimoKmFinal}`;
+        kmHint.classList.remove('hidden');
+        formAbertura.classList.remove('hidden');
+        cardAbertura.classList.remove('hidden');
+      }
+    });
+
+    document.getElementById('avarias').addEventListener('change', e => {
+      if (e.target.value === 'Sim') {
+        observacoesBox.classList.remove('hidden');
+        document.getElementById('observacoes').required = true;
+      } else {
+        observacoesBox.classList.add('hidden');
+        document.getElementById('observacoes').required = false;
+      }
+    });
+
+    async function enviarJsonFormulario(form, endpoint, sucessoMsg) {
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData.entries());
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      if (res.ok) showPopup(sucessoMsg);
+      else showPopup('Erro ao processar o formulário');
+    }
+
+    formAbertura.addEventListener('submit', e => {
+      e.preventDefault();
+      const kmInicial = parseInt(document.getElementById('km_inicial').value);
+      if (kmInicial < ultimoKmFinal) {
+        alert(`O KM inicial deve ser maior ou igual a ${ultimoKmFinal}.`);
+        return;
+      }
+      enviarJsonFormulario(formAbertura, '/abrir-uso', 'Veículo aberto para uso.');
+    });
+
+    formEncerramento.addEventListener('submit', e => {
+      e.preventDefault();
+      const kmFinal = parseInt(document.getElementById('km_final').value);
+      if (kmInicialAtual !== null && kmFinal < kmInicialAtual) {
+        alert('O KM final não pode ser menor que o KM inicial.');
+        return;
+      }
+      enviarJsonFormulario(formEncerramento, '/encerrar-uso', 'Veículo fechado com sucesso.');
+    });
+
+    formReabertura.addEventListener('submit', e => {
+      e.preventDefault();
+      enviarJsonFormulario(formReabertura, '/abrir-uso', 'Veículo reaberto para novo uso.');
+    });
+
+    function showPopup(texto) {
+      popupMsg.innerText = texto;
+      popupMsg.classList.remove('hidden');
+      setTimeout(() => {
+        popupMsg.classList.add('hidden');
+        location.reload();
+      }, 2000);
+    }
+  </script>
+</body>
+</html>

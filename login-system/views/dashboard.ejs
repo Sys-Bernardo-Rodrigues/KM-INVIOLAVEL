@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard - VTRs</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="alternate icon" href="/favicon.ico" sizes="any">
+  <meta name="theme-color" content="#111827">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --muted: #6b7280;
+      --text: #111827;
+      --border: #e5e7eb;
+      --shadow: 0 4px 16px rgba(17, 24, 39, 0.08);
+      --success: #16a34a;
+      --danger: #dc2626;
+      --accent: #10b981;
+    }
+    body { 
+      background: var(--bg); 
+      color: var(--text); 
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; 
+      -webkit-font-smoothing: antialiased; 
+      -moz-osx-font-smoothing: grayscale; 
+    }
+    .main-content { 
+      padding: 24px; 
+    }
+    /* Barra superior (top menu) */
+    .topnav {
+      position: sticky; top: 0; z-index: 50;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px;
+      padding: 10px 16px;
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+    .topnav .brand { display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:-0.3px; }
+    .topnav .brand i { color: #7c3aed; }
+    .topnav ul { list-style:none; display:flex; align-items:center; gap:8px; margin:0; padding:0; }
+    .topnav ul li a { 
+      display:flex; align-items:center; gap:8px; 
+      padding: 8px 10px; border-radius:10px; text-decoration:none; color:var(--text);
+    }
+    .topnav ul li a:hover { background:#f3f4f6; }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 10px 0 18px;
+    }
+    .toolbar .title-group { display: flex; flex-direction: column; gap: 4px; }
+    .toolbar .search {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 12px;
+      box-shadow: var(--shadow);
+      min-width: clamp(220px, 30vw, 360px);
+    }
+    .toolbar .search i { color: #6b7280; }
+    .toolbar .search input {
+      border: none; outline: none; width: 100%; background: transparent;
+      font-size: 14px; color: var(--text);
+    }
+    .toolbar .filters { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .filter-chip { cursor: pointer; }
+    .filter-chip.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(16,185,129,0.2); }
+    .main-content header h1 { 
+      font-size: clamp(20px, 3vw, 28px); 
+      letter-spacing: -0.2px; 
+    }
+    .main-content header p { 
+      color: var(--muted);
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 18px;
+    }
+    .card {
+      background: var(--card-bg);
+      padding: 16px 18px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: transform 120ms ease, box-shadow 120ms ease;
+    }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(17,24,39,0.12); }
+    .card.free { border-left: 4px solid var(--success); }
+    .card.in-use { border-left: 4px solid var(--danger); }
+    .card h3 {
+      font-size: 15px;
+      margin-bottom: 2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .card h3 i { font-size: 16px; color: #374151; }
+    .card p {
+      margin: 2px 0;
+      line-height: 1.5;
+    }
+    .card strong {
+      font-weight: 600;
+    }
+    .status-row { margin: 2px 0 6px; }
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+    }
+    .status-chip.ok { background: #ecfdf5; color: var(--success); }
+    .status-chip.busy { background: #fee2e2; color: var(--danger); }
+    .chip-row { display:flex; gap:8px; flex-wrap:wrap; margin-top: 6px; }
+    .chip { display:inline-flex; align-items:center; gap:6px; padding: 4px 10px; border-radius:999px; font-size:11px; font-weight:600; border:1px solid var(--border); }
+    .chip.ok { background:#f0fdf4; color:#16a34a; border-color:#bbf7d0; }
+    .chip.warn { background:#fffbeb; color:#ca8a04; border-color:#fde68a; }
+    .chip.alert { background:#fee2e2; color:#dc2626; border-color:#fecaca; }
+    .chip.muted { background:#f3f4f6; color:#6b7280; border-color:#e5e7eb; }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-bottom: 22px;
+      font-size: 16px;
+    }
+    .metric {
+      display: grid;
+      grid-template-columns: 40px 1fr;
+      align-items: center;
+      gap: 12px;
+      background: var(--card-bg);
+      padding: 16px 18px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+    .metric.clickable { cursor: pointer; }
+    .metric.active { border-color: var(--accent); box-shadow: 0 6px 20px rgba(16,185,129,0.18); }
+    .metric .icon {
+      height: 40px; width: 40px;
+      display: grid; place-items: center;
+      border-radius: 12px;
+      background: #f0fdf4;
+      color: var(--accent);
+    }
+    .metric .content { display: flex; align-items: baseline; gap: 10px; }
+    .metric .label { color: var(--muted); font-size: 14px; }
+    .metric .value { color: var(--text); font-size: clamp(20px, 3.2vw, 26px); font-weight: 800; margin-left: auto; letter-spacing: -0.3px; }
+    /* Tabela de VTRs (substitui os cards) */
+    .table-card {
+      background: var(--card-bg);
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      overflow: auto;
+    }
+    .vtr-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: 720px;
+      font-size: 13px;
+    }
+    .vtr-table thead th {
+      position: sticky; top: 0; z-index: 1;
+      background: #f9fafb;
+      color: var(--muted);
+      text-align: left;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+    .vtr-table tbody td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .vtr-table tbody tr:hover { background: #f9fafb; }
+    .vtr-table tbody tr.free { border-left: 4px solid var(--success); }
+    .vtr-table tbody tr.in-use { border-left: 4px solid var(--danger); }
+    .cell-title { display:flex; align-items:center; gap:8px; font-weight:600; }
+    .cell-title i { color:#374151; }
+    .cell-type { display:flex; align-items:center; gap:6px; color:#374151; }
+    .cell-motorista { color: var(--text); }
+    @media (max-width: 1000px) {
+      .vtr-table { min-width: 640px; }
+    }
+    @media (max-width: 1000px) {
+      .cards { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    }
+    @media (max-width: 600px) {
+      .cards { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topnav">
+    <div class="brand"><i class="fas fa-car"></i> KM Control</div>
+    <ul>
+      <li><a href="/dashboard"><i class="fas fa-chart-bar"></i> Dashboard</a></li>
+      <li><a href="/cadastrar-carro"><i class="fas fa-car"></i> Cadastrar Carro</a></li>
+      <li><a href="/historico"><i class="fas fa-clock-rotate-left"></i> Histórico</a></li>
+      <% if (role === 'Administrador') { %>
+        <li><a href="/admin/cadastrar-usuario"><i class="fas fa-user-plus"></i> Cadastrar Usuário</a></li>
+      <% } %>
+      <li><a href="/logout"><i class="fas fa-right-from-bracket"></i> Sair</a></li>
+    </ul>
+  </div>
+
+  <div class="main-content">
+    <div class="toolbar">
+      <div class="search">
+        <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+        <input id="dashboard-search" type="text" placeholder="Buscar VTR ou modelo..." aria-label="Buscar VTR ou modelo">
+      </div>
+      <div class="filters" aria-label="Filtros rápidos">
+        <div class="chip filter-chip warn" data-filter="abastecimento:sim" role="button" aria-pressed="false" tabindex="0">
+          <i class="fas fa-gas-pump" aria-hidden="true"></i>
+          Abastecer
+        </div>
+        <div class="chip filter-chip alert" data-filter="avarias:sim" role="button" aria-pressed="false" tabindex="0">
+          <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+          Avaria
+        </div>
+      </div>
+    </div>
+
+    <% 
+      let carros = 0, motos = 0;
+      let carrosLivres = 0, motosLivres = 0;
+      let carrosEmUso = 0, motosEmUso = 0;
+      vtrs.forEach(v => {
+        if (v.tipo === 'Carro') {
+          carros++;
+          v.em_uso ? carrosEmUso++ : carrosLivres++;
+        } else if (v.tipo === 'Moto') {
+          motos++;
+          v.em_uso ? motosEmUso++ : motosLivres++;
+        }
+      });
+    %>
+
+    <div class="summary">
+      <div class="metric clickable" data-filter="tipo:carro" title="Filtrar por Carros">
+        <div class="icon"><i class="fas fa-car" aria-hidden="true"></i></div>
+        <div class="content"><div class="label">Carros</div><div class="value"><%= carros %></div></div>
+      </div>
+      <div class="metric clickable" data-filter="tipo:carro;estado:livre" title="Mostrar apenas Carros Livres">
+        <div class="icon" style="background:#ecfdf5;color:#16a34a"><i class="fas fa-check-circle" aria-hidden="true"></i></div>
+        <div class="content"><div class="label">Carros Livres</div><div class="value"><%= carrosLivres %></div></div>
+      </div>
+      <div class="metric clickable" data-filter="tipo:carro;estado:em_uso" title="Mostrar Carros em Uso">
+        <div class="icon" style="background:#fee2e2;color:#dc2626"><i class="fas fa-circle" aria-hidden="true"></i></div>
+        <div class="content"><div class="label">Carros em Uso</div><div class="value"><%= carrosEmUso %></div></div>
+      </div>
+      <div class="metric clickable" data-filter="tipo:moto" title="Filtrar por Motos">
+        <div class="icon"><i class="fas fa-motorcycle" aria-hidden="true"></i></div>
+        <div class="content"><div class="label">Motos</div><div class="value"><%= motos %></div></div>
+      </div>
+      <div class="metric clickable" data-filter="tipo:moto;estado:livre" title="Mostrar Motos Livres">
+        <div class="icon" style="background:#ecfdf5;color:#16a34a"><i class="fas fa-check-circle" aria-hidden="true"></i></div>
+        <div class="content"><div class="label">Motos Livres</div><div class="value"><%= motosLivres %></div></div>
+      </div>
+      <div class="metric clickable" data-filter="tipo:moto;estado:em_uso" title="Mostrar Motos em Uso">
+        <div class="icon" style="background:#fee2e2;color:#dc2626"><i class="fas fa-circle" aria-hidden="true"></i></div>
+        <div class="content"><div class="label">Motos em Uso</div><div class="value"><%= motosEmUso %></div></div>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <table class="vtr-table">
+        <thead>
+          <tr>
+            <th>VTR</th>
+            <th>Modelo</th>
+            <th>Tipo</th>
+            <th>Status</th>
+            <th>Motorista</th>
+            <th>Abastecimento</th>
+            <th>Avarias</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% vtrs.forEach(vtr => { %>
+            <tr class="<%= vtr.em_uso ? 'in-use' : 'free' %>" data-vtr="<%= vtr.numero_vtr %> <%= vtr.modelo %>" data-tipo="<%= (vtr.tipo || '').toLowerCase() %>" data-estado="<%= vtr.em_uso ? 'em_uso' : 'livre' %>" data-abastecimento="<%= vtr.abastecimento === 'Sim' ? 'sim' : 'nao' %>" data-avarias="<%= vtr.avarias === 'Sim' ? 'sim' : 'nao' %>"
+                data-vtr-id="<%= vtr.id %>" data-uso-id="<%= vtr.uso_id || '' %>" data-km-inicial="<%= vtr.km_inicial || '' %>" data-motorista="<%= vtr.vigilante_inicio || '' %>" data-vtr-nome="VTR - <%= vtr.numero_vtr %>">
+              <td>
+                <div class="cell-title">
+                  <i class="fas <%= vtr.tipo === 'Carro' ? 'fa-car' : 'fa-motorcycle' %>" aria-hidden="true"></i>
+                  VTR - <%= vtr.numero_vtr %>
+                </div>
+              </td>
+              <td><%= vtr.modelo %></td>
+              <td>
+                <div class="cell-type">
+                  <i class="fas <%= vtr.tipo === 'Carro' ? 'fa-car' : 'fa-motorcycle' %>" aria-hidden="true"></i>
+                  <%= vtr.tipo %>
+                </div>
+              </td>
+              <td>
+                <div class="status-chip <%= vtr.em_uso ? 'busy' : 'ok' %>">
+                  <i class="fas <%= vtr.em_uso ? 'fa-circle' : 'fa-check-circle' %>"></i>
+                  <%= vtr.em_uso ? 'EM USO' : 'LIVRE' %>
+                </div>
+              </td>
+              <td class="cell-motorista"><%= vtr.em_uso ? (vtr.vigilante_inicio || '-') : '-' %></td>
+              <td>
+                <div class="chip <%= vtr.abastecimento === 'Sim' ? 'warn' : 'muted' %>">
+                  <i class="fas fa-gas-pump"></i>
+                  <%= vtr.abastecimento === 'Sim' ? 'Abastecer' : 'OK' %>
+                </div>
+              </td>
+              <td>
+                <div class="chip <%= vtr.avarias === 'Sim' ? 'alert' : 'ok' %>">
+                  <i class="fas <%= vtr.avarias === 'Sim' ? 'fa-exclamation-triangle' : 'fa-check' %>"></i>
+                  <%= vtr.avarias === 'Sim' ? 'Avaria' : 'Sem avarias' %>
+                </div>
+              </td>
+              <td>
+                <% if (vtr.em_uso) { %>
+                  <button class="btn btn-purple" title="Encerrar veículo" data-action="encerrar">
+                    <i class="fas fa-door-closed" aria-hidden="true"></i>
+                    Encerrar
+                  </button>
+                <% } else { %>
+                  <span class="form-help" title="Veículo livre">—</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <!-- Backdrop e Modal de Encerramento -->
+  <div id="encerrar-backdrop" class="modal-backdrop"></div>
+  <div id="encerrar-modal" class="modal" style="display:none;">
+    <header>
+      <div class="title"><i class="fas fa-door-closed"></i> Encerrar Veículo</div>
+      <button class="close-btn" id="close-encerrar" aria-label="Fechar"><i class="fas fa-times"></i></button>
+    </header>
+    <div class="content">
+      <div class="form-row" style="gap:12px; flex-wrap:wrap;">
+        <div class="form-group" style="min-width:240px; flex:1;">
+          <label>VTR</label>
+          <div id="modal-vtr" class="km-info" aria-live="polite"><i class="fas fa-car"></i> —</div>
+        </div>
+        <div class="form-group" style="min-width:240px; flex:1;">
+          <label>Usuário (abertura)</label>
+          <div id="modal-user" class="km-info"><i class="fas fa-user"></i> —</div>
+        </div>
+        <div class="form-group" style="min-width:160px;">
+          <label>KM Inicial</label>
+          <div id="modal-km-inicial" class="km-info"><i class="fas fa-tachometer-alt"></i> —</div>
+        </div>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--border); margin: 6px 0 2px;">
+      <div class="form-group">
+        <label for="modal-km-final">KM Final (obrigatório)</label>
+        <input type="number" id="modal-km-final" min="0" step="1" pattern="\\d*" inputmode="numeric" placeholder="Informe a quilometragem final" required aria-required="true">
+        <div id="km-final-error" class="alert error" role="alert" style="display:none;">
+          <i class="fas fa-circle-info" aria-hidden="true"></i>
+          <span id="km-final-error-text">Informe um KM final válido.</span>
+        </div>
+      </div>
+      <div class="form-row" style="gap:12px;">
+        <label style="display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" id="modal-abastecimento">
+          Necessário abastecer
+        </label>
+        <label style="display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" id="modal-avarias">
+          Avarias
+        </label>
+      </div>
+      <div class="form-group" id="modal-avarias-detail" style="display:none;">
+        <label for="modal-avarias-text">Detalhe das avarias</label>
+        <input type="text" id="modal-avarias-text" placeholder="Descreva as avarias encontradas" aria-disabled="false">
+      </div>
+      <div class="actions">
+        <button class="btn" id="cancel-encerrar">Cancelar</button>
+        <button class="btn btn-primary" id="confirm-encerrar">Confirmar</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Filtro de busca + filtro por tipo (Carro/Moto)
+    const searchInput = document.getElementById('dashboard-search');
+    let activeType = null;
+    let activeState = null;
+    let activeFuel = null; // 'sim' para veículos que precisam abastecer
+    let activeDamage = null; // 'sim' para veículos com avaria
+
+    function applyTableFilter() {
+      const term = (searchInput?.value || '').toLowerCase();
+      document.querySelectorAll('.vtr-table tbody tr').forEach(row => {
+        const data = (row.getAttribute('data-vtr') || '').toLowerCase();
+        const tipo = (row.getAttribute('data-tipo') || '').toLowerCase();
+        const estado = (row.getAttribute('data-estado') || '').toLowerCase();
+        const fuel = (row.getAttribute('data-abastecimento') || '').toLowerCase();
+        const damage = (row.getAttribute('data-avarias') || '').toLowerCase();
+        const matchTerm = data.includes(term);
+        const matchType = !activeType || tipo === activeType;
+        const matchState = !activeState || estado === activeState;
+        const matchFuel = !activeFuel || fuel === activeFuel;
+        const matchDamage = !activeDamage || damage === activeDamage;
+        row.style.display = (matchTerm && matchType && matchState && matchFuel && matchDamage) ? '' : 'none';
+      });
+    }
+
+    if (searchInput) {
+      searchInput.addEventListener('input', applyTableFilter);
+    }
+
+    let activeMetric = null;
+    document.querySelectorAll('.summary .metric[data-filter]').forEach(metric => {
+      metric.addEventListener('click', () => {
+        const raw = (metric.getAttribute('data-filter') || '').trim();
+        const parts = raw.split(';').map(s => s.trim()).filter(Boolean);
+        let nextType = null, nextState = null;
+        parts.forEach(p => {
+          const [k, v] = p.split(':');
+          if (k && v) {
+            const key = k.toLowerCase();
+            const val = v.toLowerCase();
+            if (key === 'tipo') nextType = val;
+            if (key === 'estado') nextState = val;
+          }
+        });
+
+        const isSame = activeMetric === metric && activeType === nextType && activeState === nextState;
+        if (isSame) {
+          activeType = null;
+          activeState = null;
+          metric.classList.remove('active');
+          activeMetric = null;
+        } else {
+          activeType = nextType;
+          activeState = nextState;
+          document.querySelectorAll('.summary .metric[data-filter]').forEach(m => m.classList.remove('active'));
+          metric.classList.add('active');
+          activeMetric = metric;
+        }
+        applyTableFilter();
+      });
+    });
+
+    // Filtros rápidos: Abastecer e Avaria na toolbar
+    document.querySelectorAll('.toolbar .filter-chip[data-filter]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const raw = (chip.getAttribute('data-filter') || '').trim();
+        const [k, v] = raw.split(':');
+        if (k && v) {
+          const key = k.toLowerCase();
+          const val = v.toLowerCase();
+          if (key === 'abastecimento') {
+            activeFuel = (activeFuel === val) ? null : val;
+            // status visual
+            document.querySelectorAll('.toolbar .filter-chip[data-filter^="abastecimento"]').forEach(c => c.classList.remove('active'));
+            if (activeFuel) chip.classList.add('active'); else chip.classList.remove('active');
+          } else if (key === 'avarias') {
+            activeDamage = (activeDamage === val) ? null : val;
+            document.querySelectorAll('.toolbar .filter-chip[data-filter^="avarias"]').forEach(c => c.classList.remove('active'));
+            if (activeDamage) chip.classList.add('active'); else chip.classList.remove('active');
+          }
+          applyTableFilter();
+        }
+      });
+    });
+
+    // Modal Encerrar: abrir, preencher e enviar
+    (function() {
+      const backdrop = document.getElementById('encerrar-backdrop');
+      const modal = document.getElementById('encerrar-modal');
+      const closeBtn = document.getElementById('close-encerrar');
+      const cancelBtn = document.getElementById('cancel-encerrar');
+      const confirmBtn = document.getElementById('confirm-encerrar');
+      const kmFinalInput = document.getElementById('modal-km-final');
+      const kmFinalError = document.getElementById('km-final-error');
+      const abastecimentoChk = document.getElementById('modal-abastecimento');
+      const avariasChk = document.getElementById('modal-avarias');
+      const avariasDetail = document.getElementById('modal-avarias-detail');
+      const avariasText = document.getElementById('modal-avarias-text');
+
+      let currentUsoId = null;
+      let currentVtrId = null;
+      let currentKmInicial = 0;
+
+      function openModalFromRow(row) {
+        const vtrNome = row.getAttribute('data-vtr-nome') || 'VTR';
+        const userName = row.getAttribute('data-motorista') || '-';
+        const kmInicial = row.getAttribute('data-km-inicial') || '';
+        currentUsoId = row.getAttribute('data-uso-id') || '';
+        currentVtrId = row.getAttribute('data-vtr-id') || '';
+
+        document.getElementById('modal-vtr').innerHTML = `<i class="fas fa-car"></i> ${vtrNome}`;
+        document.getElementById('modal-user').innerHTML = `<i class="fas fa-user"></i> ${userName || '-'}`;
+        document.getElementById('modal-km-inicial').innerHTML = `<i class="fas fa-tachometer-alt"></i> ${kmInicial || '-'}`;
+
+        currentKmInicial = Number.parseInt(kmInicial || '0', 10) || 0;
+
+        kmFinalInput.value = '';
+        kmFinalError.style.display = 'none';
+        confirmBtn.disabled = true; // só libera quando valor válido
+        abastecimentoChk.checked = false;
+        avariasChk.checked = false;
+        avariasDetail.style.display = 'none';
+        avariasText.value = '';
+
+        backdrop.classList.add('open');
+        modal.style.display = 'block';
+        modal.classList.add('open');
+        setTimeout(() => kmFinalInput?.focus(), 50);
+      }
+
+      function closeModal() {
+        backdrop.classList.remove('open');
+        modal.classList.remove('open');
+        modal.style.display = 'none';
+        currentUsoId = null;
+        currentVtrId = null;
+      }
+
+      avariasChk.addEventListener('change', () => {
+        avariasDetail.style.display = avariasChk.checked ? 'block' : 'none';
+      });
+
+      // Abrir ao clicar no botão da linha
+      document.querySelectorAll('.vtr-table tbody tr').forEach(row => {
+        const btn = row.querySelector('button[data-action="encerrar"]');
+        if (btn) {
+          btn.addEventListener('click', () => openModalFromRow(row));
+        }
+      });
+
+      closeBtn.addEventListener('click', closeModal);
+      cancelBtn.addEventListener('click', closeModal);
+      backdrop.addEventListener('click', closeModal);
+      window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+      // Validação: apenas inteiros e >= KM inicial
+      function validarKmFinal() {
+        let raw = (kmFinalInput.value || '').trim();
+        // bloquear caracteres não numéricos
+        raw = raw.replace(/[^0-9]/g, '');
+        kmFinalInput.value = raw;
+
+        if (!raw) {
+          kmFinalError.style.display = 'block';
+          var s = document.getElementById('km-final-error-text');
+          if (s) s.textContent = 'Informe um KM final inteiro.';
+          confirmBtn.disabled = true;
+          return false;
+        }
+        const val = Number.parseInt(raw, 10);
+        if (!Number.isInteger(val)) {
+          kmFinalError.style.display = 'block';
+          var s2 = document.getElementById('km-final-error-text');
+          if (s2) s2.textContent = 'Informe um número inteiro.';
+          confirmBtn.disabled = true;
+          return false;
+        }
+        if (val < currentKmInicial) {
+          kmFinalError.style.display = 'block';
+          var s3 = document.getElementById('km-final-error-text');
+          if (s3) s3.textContent = 'KM final não pode ser menor que o KM inicial.';
+          confirmBtn.disabled = true;
+          return false;
+        }
+        kmFinalError.style.display = 'none';
+        confirmBtn.disabled = false;
+        return true;
+      }
+
+      // Inputs: validar em tempo real e bloquear separadores decimais
+      kmFinalInput.addEventListener('input', validarKmFinal);
+      kmFinalInput.addEventListener('keydown', (e) => {
+        if (e.key === '.' || e.key === ',') e.preventDefault();
+      });
+
+      // Enviar encerramento
+      confirmBtn.addEventListener('click', async () => {
+        if (!validarKmFinal()) { kmFinalInput.focus(); return; }
+        const kmFinal = Number.parseInt(kmFinalInput.value, 10);
+
+        const abastecimento = abastecimentoChk.checked ? 'Sim' : 'Não';
+        const avarias = avariasChk.checked ? 'Sim' : 'Não';
+        const observacoes = (avariasText.value || '').trim();
+
+        const body = new URLSearchParams({
+          uso_id: String(currentUsoId || ''),
+          km_final: String(kmFinal),
+          abastecimento,
+          avarias,
+          observacoes
+        }).toString();
+
+        try {
+          const resp = await fetch('/encerrar-uso', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body
+          });
+          const text = await resp.text();
+          // Feedback simples
+          const msg = document.createElement('div');
+          msg.className = 'popup-msg ' + (resp.ok ? 'success' : 'error');
+          msg.textContent = text || (resp.ok ? 'Uso encerrado com sucesso.' : 'Falha ao encerrar.');
+          document.body.appendChild(msg);
+          setTimeout(() => msg.remove(), 2500);
+
+          if (resp.ok) {
+            closeModal();
+            // Atualiza visual da linha rapidamente (sem recarregar)
+            const row = document.querySelector(`.vtr-table tbody tr[data-uso-id="${CSS.escape(String(currentUsoId))}"]`) || document.querySelector(`.vtr-table tbody tr[data-vtr-id="${CSS.escape(String(currentVtrId))}"]`);
+            if (row) {
+              row.setAttribute('data-estado', 'livre');
+              row.classList.remove('in-use');
+              row.classList.add('free');
+              const statusChip = row.querySelector('.status-chip');
+              if (statusChip) {
+                statusChip.classList.remove('busy');
+                statusChip.classList.add('ok');
+                statusChip.innerHTML = '<i class="fas fa-check-circle"></i> LIVRE';
+              }
+              const motoristaCell = row.querySelector('.cell-motorista');
+              if (motoristaCell) motoristaCell.textContent = '-';
+              const actionCellBtn = row.querySelector('button[data-action="encerrar"]');
+              if (actionCellBtn) actionCellBtn.replaceWith(Object.assign(document.createElement('span'), { className: 'form-help', textContent: '—' }));
+            }
+          }
+        } catch (err) {
+          const msg = document.createElement('div');
+          msg.className = 'popup-msg error';
+          msg.textContent = 'Erro de rede ao encerrar.';
+          document.body.appendChild(msg);
+          setTimeout(() => msg.remove(), 2500);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

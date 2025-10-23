@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Cadastrar Usuário</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="alternate icon" href="/favicon.ico" sizes="any">
+  <meta name="theme-color" content="#111827">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="topnav">
+    <div class="brand"><i class="fas fa-car"></i> KM Control</div>
+    <ul>
+      <li><a href="/dashboard"><i class="fas fa-chart-bar"></i> Dashboard</a></li>
+      <li><a href="/cadastrar-carro"><i class="fas fa-car"></i> Cadastrar Carro</a></li>
+      <li><a href="/historico"><i class="fas fa-clock-rotate-left"></i> Histórico</a></li>
+      <% if (role === 'Administrador') { %>
+        <li><a href="/admin/cadastrar-usuario"><i class="fas fa-user-plus"></i> Cadastrar Usuário</a></li>
+      <% } %>
+      <li><a href="/logout"><i class="fas fa-right-from-bracket"></i> Sair</a></li>
+    </ul>
+  </div>
+  <div class="main-content">
+    <!-- Header removido conforme pedido (h1 e p) -->
+
+    <div class="toolbar" aria-label="Ferramentas de busca">
+      <div class="search">
+        <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+        <input id="user-search" type="text" placeholder="Buscar usuário..." aria-label="Buscar usuário">
+      </div>
+      <div class="filters" aria-label="Ações rápidas">
+        <div class="chip filter-chip" id="show-all" title="Mostrar todos">Todos</div>
+        <button class="btn btn-primary" id="open-user-modal"><i class="fas fa-user-plus"></i> Novo Usuário</button>
+      </div>
+    </div>
+    <% if (mensagem) { %>
+      <div id="user-toast" class="popup-msg <%= mensagemTipo || 'success' %>">
+        <i class="fas fa-info-circle" aria-hidden="true"></i>
+        <span><%= mensagem %></span>
+      </div>
+      <script>
+        // Esconde automaticamente o toast após alguns segundos
+        setTimeout(() => {
+          document.getElementById('user-toast')?.classList.add('hidden');
+        }, 2600);
+      </script>
+    <% } %>
+    <!-- Modal de cadastro de usuário -->
+    <div id="user-modal-backdrop" class="modal-backdrop" aria-hidden="true"></div>
+    <div id="user-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="user-modal-title" style="display:none">
+      <header>
+        <div class="title"><i class="fas fa-user-plus"></i> <span id="user-modal-title">Cadastrar Usuário</span></div>
+        <button id="close-user-modal" class="close-btn" aria-label="Fechar"><i class="fas fa-xmark"></i></button>
+      </header>
+      <div class="content">
+        <form id="user-form" action="/admin/cadastrar-usuario" method="POST">
+          <div class="form-group">
+            <label for="username">Nome de usuário</label>
+            <input type="text" name="username" id="username" required>
+          </div>
+          <div class="form-group">
+            <label for="password">Senha</label>
+            <input type="password" name="password" id="password" required>
+          </div>
+          <div class="form-group">
+            <label for="tipo">Tipo de usuário</label>
+            <select name="tipo" id="tipo" required>
+              <option value="USUARIO">USUÁRIO</option>
+              <option value="BASE">BASE</option>
+              <option value="Administrador">ADMINISTRADOR</option>
+            </select>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn" id="cancel-user-modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Cadastrar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="table-card" style="padding: 12px;">
+      <div id="user-list">
+        <% usuarios.forEach(user => { %>
+          <div class="user-item" data-username="<%= (user.username || '').toLowerCase() %>" style="display:flex; align-items:center; justify-content:space-between; padding:12px 4px; border-bottom:1px solid var(--border);">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div class="cell-title"><i class="fas fa-user"></i> <%= user.username %></div>
+              <div class="chip muted">ID: <%= user.id || '-' %></div>
+              <div class="chip"><i class="fas fa-id-badge"></i> <%= user.tipo || 'USUARIO' %></div>
+            </div>
+            <div>
+              <form action="/admin/deletar-usuario" method="POST" class="inline-form">
+                <input type="hidden" name="username" value="<%= user.username %>">
+                <button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> Apagar</button>
+              </form>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Busca de usuários na tabela
+    const userSearch = document.getElementById('user-search');
+    const userList = document.getElementById('user-list');
+    function applyUserFilter() {
+      const term = (userSearch?.value || '').toLowerCase();
+      userList?.querySelectorAll('.user-item').forEach(item => {
+        const name = item.getAttribute('data-username') || '';
+        item.style.display = name.includes(term) ? '' : 'none';
+      });
+    }
+    userSearch?.addEventListener('input', applyUserFilter);
+    document.getElementById('show-all')?.addEventListener('click', () => {
+      if (userSearch) userSearch.value = '';
+      applyUserFilter();
+    });
+
+    // Modal: abrir/fechar
+    (function() {
+      const backdrop = document.getElementById('user-modal-backdrop');
+      const modal = document.getElementById('user-modal');
+      const openBtn = document.getElementById('open-user-modal');
+      const closeBtn = document.getElementById('close-user-modal');
+      const cancelBtn = document.getElementById('cancel-user-modal');
+      const usernameInput = document.getElementById('username');
+
+      function openModal() {
+        backdrop.classList.add('open');
+        modal.style.display = 'block';
+        modal.classList.add('open');
+        setTimeout(() => usernameInput?.focus(), 10);
+      }
+      function closeModal() {
+        backdrop.classList.remove('open');
+        modal.classList.remove('open');
+        modal.style.display = 'none';
+      }
+
+      openBtn?.addEventListener('click', openModal);
+      closeBtn?.addEventListener('click', closeModal);
+      cancelBtn?.addEventListener('click', closeModal);
+      backdrop?.addEventListener('click', closeModal);
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
+      });
+    })();
+  </script>
+</body>
+</html>

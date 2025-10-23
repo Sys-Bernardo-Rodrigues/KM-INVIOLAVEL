@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Histórico de Uso</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="alternate icon" href="/favicon.ico" sizes="any">
+  <meta name="theme-color" content="#111827">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="topnav">
+    <div class="brand"><i class="fas fa-car"></i> KM Control</div>
+    <ul>
+      <li><a href="/dashboard"><i class="fas fa-chart-bar"></i> Dashboard</a></li>
+      <li><a href="/cadastrar-carro"><i class="fas fa-car"></i> Cadastrar Carro</a></li>
+      <li><a href="/historico"><i class="fas fa-clock-rotate-left"></i> Histórico</a></li>
+      <% if (role === 'Administrador') { %>
+        <li><a href="/admin/cadastrar-usuario"><i class="fas fa-user-plus"></i> Cadastrar Usuário</a></li>
+      <% } %>
+      <li><a href="/logout"><i class="fas fa-right-from-bracket"></i> Sair</a></li>
+    </ul>
+  </div>
+  <div class="main-content">
+    
+
+    <div class="toolbar" aria-label="Ferramentas de busca">
+      <div class="search">
+        <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+        <input id="historico-search" type="text" placeholder="Buscar VTR, modelo ou vigilante..." aria-label="Buscar VTR, modelo ou vigilante">
+      </div>
+      <div class="date-filters">
+        <label class="date-field" for="filter-date-from">
+          <span class="date-label">Data início</span>
+          <input type="date" id="filter-date-from" name="data_inicio" aria-label="Filtrar a partir de">
+        </label>
+        <label class="date-field" for="filter-date-to">
+          <span class="date-label">Data fim</span>
+          <input type="date" id="filter-date-to" name="data_fim" aria-label="Filtrar até">
+        </label>
+      </div>
+    </div>
+
+    <div class="table-card">
+    <table class="vtr-table" id="tabela-historico">
+      <thead>
+        <tr>
+          <th>Veículo</th>
+          <th>KM Inicial</th>
+          <th>Motorista Início</th>
+          <th>Início</th>
+          <th>KM Final</th>
+          <th>Motorista Fim</th>
+          <th>Fim</th>
+          <th>Checklist</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% registros.forEach(r => { %>
+          <tr 
+            data-vtr="<%= (r.numero_vtr + ' - ' + r.modelo).toLowerCase() %>"
+            data-vigilante="<%= ((r.vigilante_inicio || '') + ' ' + (r.vigilante_fim || '')).toLowerCase() %>"
+            data-estado="<%= r.em_uso ? 'em_uso' : 'finalizado' %>"
+            data-abastecimento="<%= (r.abastecimento || '').toString().toLowerCase() %>"
+            data-avarias="<%= (r.avarias || '').toString().toLowerCase() %>"
+            data-inicio="<%= r.data_inicio || '' %>"
+            data-fim="<%= r.data_fim || '' %>"
+          >
+            <td>
+              <div class="cell-title"><i class="fas fa-car"></i> <%= r.numero_vtr %> - <%= r.modelo %></div>
+            </td>
+            <td><%= r.km_inicial %></td>
+            <td><%= r.vigilante_inicio %></td>
+            <td><%= r.data_inicio ? new Date(r.data_inicio).toLocaleString() : '-' %></td>
+            <td><%= r.km_final || '-' %></td>
+            <td><%= r.vigilante_fim || '-' %></td>
+            <td><%= r.data_fim ? new Date(r.data_fim).toLocaleString() : '-' %></td>
+            <td>
+              <strong>Abastecimento:</strong> <%= r.abastecimento || '-' %><br>
+              <strong>Avarias:</strong> <%= r.avarias || '-' %><br>
+              <strong>Obs.:</strong> <%= r.observacoes || '-' %>
+            </td>
+            <td>
+              <% if (r.em_uso) { %>
+                <span style="color: #b91c1c;"><i class="fas fa-clock"></i> Em uso</span>
+              <% } else { %>
+                <span style="color: #15803d;"><i class="fas fa-check-circle"></i> Finalizado</span>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    </div>
+    <div id="historico-pagination" class="pagination" aria-label="Paginação" aria-live="polite" style="display:none;"></div>
+    <div id="empty-historico" class="form-help" style="display:none; margin-top:8px;">Nenhum registro encontrado com os filtros aplicados.</div>
+  </div>
+
+  <script>
+    const searchInput = document.getElementById('historico-search');
+    const tabela = document.getElementById('tabela-historico');
+    const emptyState = document.getElementById('empty-historico');
+    const paginationEl = document.getElementById('historico-pagination');
+    const dateFromInput = document.getElementById('filter-date-from');
+    const dateToInput = document.getElementById('filter-date-to');
+
+    let currentPage = 1;
+    const pageSize = 8;
+    let filteredRows = [];
+
+    function filtrarTabela() {
+      const linhas = tabela.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+      const q = (searchInput.value || '').toLowerCase();
+
+      filteredRows = [];
+      Array.from(linhas).forEach(row => {
+        const textoVtr = (row.getAttribute('data-vtr') || '').toLowerCase();
+        const textoVigilante = (row.getAttribute('data-vigilante') || '').toLowerCase();
+        const matchQuery = (textoVtr.includes(q) || textoVigilante.includes(q));
+
+        const inicioIso = row.getAttribute('data-inicio') || '';
+        const fimIso = row.getAttribute('data-fim') || '';
+        const inicioYmd = inicioIso ? new Date(inicioIso).toISOString().slice(0, 10) : '';
+        const fimYmd = fimIso ? new Date(fimIso).toISOString().slice(0, 10) : '';
+
+        const from = dateFromInput.value || '';
+        const to = dateToInput.value || '';
+        const effectiveEnd = fimYmd || inicioYmd;
+        let matchDate = true;
+        if (from) matchDate = matchDate && (!!inicioYmd && inicioYmd >= from);
+        if (to) matchDate = matchDate && (!!effectiveEnd && effectiveEnd <= to);
+
+        const show = matchQuery && matchDate;
+        if (show) filteredRows.push(row);
+      });
+
+      currentPage = 1; // reset when filters change
+      renderPagination();
+      renderPage();
+    }
+
+    function renderPage() {
+      const linhas = tabela.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+      Array.from(linhas).forEach(row => { row.style.display = 'none'; });
+
+      const total = filteredRows.length;
+      if (total === 0) {
+        emptyState.style.display = 'block';
+        paginationEl.style.display = 'none';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      const start = (currentPage - 1) * pageSize;
+      const end = Math.min(start + pageSize, total);
+      for (let i = start; i < end; i++) {
+        filteredRows[i].style.display = '';
+      }
+    }
+
+    function renderPagination() {
+      const totalPages = Math.ceil(filteredRows.length / pageSize) || 0;
+      paginationEl.innerHTML = '';
+      if (totalPages <= 1) {
+        paginationEl.style.display = 'none';
+        return;
+      }
+      paginationEl.style.display = 'flex';
+
+      const first = document.createElement('button');
+      first.className = 'page-btn first';
+      first.textContent = '«';
+      first.disabled = currentPage === 1;
+      first.dataset.type = 'first';
+      first.setAttribute('aria-label', 'Primeira página');
+      paginationEl.appendChild(first);
+
+      const prev = document.createElement('button');
+      prev.className = 'page-btn prev';
+      prev.textContent = '‹';
+      prev.disabled = currentPage === 1;
+      prev.dataset.type = 'prev';
+      prev.setAttribute('aria-label', 'Página anterior');
+      paginationEl.appendChild(prev);
+
+      // Janela deslizante com 5 números visíveis
+      let start = Math.max(1, currentPage - 2);
+      let end = Math.min(totalPages, start + 4);
+      if ((end - start + 1) < 5) {
+        start = Math.max(1, end - 4);
+      }
+      for (let p = start; p <= end; p++) {
+        const btn = document.createElement('button');
+        btn.className = 'page-btn' + (p === currentPage ? ' active' : '');
+        btn.textContent = String(p);
+        btn.dataset.page = String(p);
+        paginationEl.appendChild(btn);
+      }
+
+      const next = document.createElement('button');
+      next.className = 'page-btn next';
+      next.textContent = '›';
+      next.disabled = currentPage === totalPages;
+      next.dataset.type = 'next';
+      next.setAttribute('aria-label', 'Próxima página');
+      paginationEl.appendChild(next);
+
+      const last = document.createElement('button');
+      last.className = 'page-btn last';
+      last.textContent = '»';
+      last.disabled = currentPage === totalPages;
+      last.dataset.type = 'last';
+      last.setAttribute('aria-label', 'Última página');
+      paginationEl.appendChild(last);
+
+      // Campo de inserção manual do número da página
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.className = 'page-input';
+      input.min = '1';
+      input.max = String(totalPages);
+      input.value = String(currentPage);
+      input.title = `Ir para página (1-${totalPages})`;
+      input.setAttribute('aria-label', `Ir para página (1 a ${totalPages})`);
+      paginationEl.appendChild(input);
+
+      const applyInput = () => {
+        let val = parseInt(input.value, 10);
+        if (isNaN(val)) return;
+        val = Math.max(1, Math.min(totalPages, val));
+        currentPage = val;
+        renderPagination();
+        renderPage();
+      };
+      input.addEventListener('change', applyInput);
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') applyInput();
+      });
+    }
+
+    paginationEl.addEventListener('click', (e) => {
+      const target = e.target.closest('.page-btn');
+      if (!target) return;
+      const totalPages = Math.ceil(filteredRows.length / pageSize) || 0;
+      if (target.dataset.type === 'first') {
+        currentPage = 1;
+      } else if (target.dataset.type === 'prev' && currentPage > 1) {
+        currentPage--;
+      } else if (target.dataset.type === 'next' && currentPage < totalPages) {
+        currentPage++;
+      } else if (target.dataset.type === 'last') {
+        currentPage = totalPages;
+      } else if (target.dataset.page) {
+        currentPage = parseInt(target.dataset.page, 10);
+      }
+      renderPagination();
+      renderPage();
+    });
+
+    // Eventos de busca
+    searchInput.addEventListener('input', filtrarTabela);
+    // Eventos de data
+    dateFromInput.addEventListener('input', filtrarTabela);
+    dateToInput.addEventListener('input', filtrarTabela);
+
+    // Primeira execução
+    filtrarTabela();
+  </script>
+</body>
+</html>
