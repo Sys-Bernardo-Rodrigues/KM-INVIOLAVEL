@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const db = require('./database');
+const { renderHistoricoPdfToResponse } = require('./utils/pdf');
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3932;
@@ -536,6 +537,31 @@ app.post('/encerrar-uso', authorizeRoles(['USUARIO', 'BASE']), (req, res) => {
 
 // Histórico
 app.get('/historico', authorizeRoles(['BASE']), (req, res) => {
+    const q = (req.query.q || '').trim();
+    const from = (req.query.from || '').trim(); // yyyy-mm-dd
+    const to = (req.query.to || '').trim();     // yyyy-mm-dd
+
+    const params = [];
+    let where = '';
+    const clauses = [];
+
+    if (q) {
+      const like = `%${q}%`;
+      clauses.push('(p.numero_vtr_snapshot LIKE ? OR p.modelo_snapshot LIKE ? OR u.vigilante_inicio LIKE ? OR u.vigilante_fim LIKE ? OR c.placa LIKE ?)');
+      params.push(like, like, like, like, like);
+    }
+    if (from) {
+      clauses.push('u.data_inicio >= ?');
+      params.push(`${from}T00:00:00`);
+    }
+    if (to) {
+      clauses.push('COALESCE(u.data_fim, u.data_inicio) <= ?');
+      params.push(`${to}T23:59:59`);
+    }
+    if (clauses.length) {
+      where = 'WHERE ' + clauses.join(' AND ');
+    }
+
     const sql = `
         SELECT u.*, 
                p.numero_vtr_snapshot AS numero_vtr, 
@@ -545,11 +571,113 @@ app.get('/historico', authorizeRoles(['BASE']), (req, res) => {
         FROM usos_veiculos u
         JOIN protocolos_uso p ON p.id = u.protocolo_id
         LEFT JOIN carros c ON c.id = u.vtr_id
+        ${where}
         ORDER BY u.data_inicio DESC
     `;
-    db.all(sql, [], (err, rows) => {
-        if (err) return res.send("Erro ao carregar histórico.");
-        res.render('historico', { username: req.session.username, role: req.session.role, registros: rows });
+    db.all(sql, params, (err, rows) => {
+        if (err) return res.send('Erro ao carregar histórico.');
+        res.render('historico', { username: req.session.username, role: req.session.role, registros: rows, q, from, to });
+    });
+});
+
+// Exportação de histórico em PDF com filtros
+app.get('/historico/export-pdf', authorizeRoles(['BASE']), (req, res) => {
+    const q = (req.query.q || '').trim();
+    const from = (req.query.from || '').trim(); // yyyy-mm-dd
+    const to = (req.query.to || '').trim();     // yyyy-mm-dd
+
+    const params = [];
+    let where = '';
+    const clauses = [];
+
+    if (q) {
+      const like = `%${q}%`;
+      clauses.push('(p.numero_vtr_snapshot LIKE ? OR p.modelo_snapshot LIKE ? OR u.vigilante_inicio LIKE ? OR u.vigilante_fim LIKE ? OR c.placa LIKE ?)');
+      params.push(like, like, like, like, like);
+    }
+    if (from) {
+      clauses.push('u.data_inicio >= ?');
+      params.push(`${from}T00:00:00`);
+    }
+    if (to) {
+      clauses.push('COALESCE(u.data_fim, u.data_inicio) <= ?');
+      params.push(`${to}T23:59:59`);
+    }
+    if (clauses.length) {
+      where = 'WHERE ' + clauses.join(' AND ');
+    }
+
+    const sql = `
+        SELECT u.*, 
+               p.numero_vtr_snapshot AS numero_vtr, 
+               p.modelo_snapshot AS modelo, 
+               p.protocolo_codigo,
+               c.placa AS placa
+        FROM usos_veiculos u
+        JOIN protocolos_uso p ON p.id = u.protocolo_id
+        LEFT JOIN carros c ON c.id = u.vtr_id
+        ${where}
+        ORDER BY u.data_inicio DESC
+    `;
+
+    db.all(sql, params, (err, rows) => {
+        if (err) {
+            console.error('Erro ao gerar PDF:', err);
+            return res.status(500).send('Erro ao gerar PDF.');
+        }
+        const filters = { q, from, to };
+        renderHistoricoPdfToResponse(res, rows, filters);
+    });
+});
+
+// Prévia pública da exportação em PDF (sem login) para validação visual
+app.get('/historico/export-pdf-preview', (req, res) => {
+    const q = (req.query.q || '').trim();
+    const from = (req.query.from || '').trim();
+    const to = (req.query.to || '').trim();
+
+    const params = [];
+    let where = '';
+    const clauses = [];
+
+    if (q) {
+      const like = `%${q}%`;
+      clauses.push('(p.numero_vtr_snapshot LIKE ? OR p.modelo_snapshot LIKE ? OR u.vigilante_inicio LIKE ? OR u.vigilante_fim LIKE ? OR c.placa LIKE ?)');
+      params.push(like, like, like, like, like);
+    }
+    if (from) {
+      clauses.push('u.data_inicio >= ?');
+      params.push(`${from}T00:00:00`);
+    }
+    if (to) {
+      clauses.push('COALESCE(u.data_fim, u.data_inicio) <= ?');
+      params.push(`${to}T23:59:59`);
+    }
+    if (clauses.length) {
+      where = 'WHERE ' + clauses.join(' AND ');
+    }
+
+    const sql = `
+        SELECT u.*, 
+               p.numero_vtr_snapshot AS numero_vtr, 
+               p.modelo_snapshot AS modelo, 
+               p.protocolo_codigo,
+               c.placa AS placa
+        FROM usos_veiculos u
+        JOIN protocolos_uso p ON p.id = u.protocolo_id
+        LEFT JOIN carros c ON c.id = u.vtr_id
+        ${where}
+        ORDER BY u.data_inicio DESC
+        LIMIT 100
+    `;
+
+    db.all(sql, params, (err, rows) => {
+        if (err) {
+            console.error('Erro ao gerar PDF (preview):', err);
+            return res.status(500).send('Erro ao gerar PDF (preview).');
+        }
+        const filters = { q, from, to };
+        renderHistoricoPdfToResponse(res, rows, filters);
     });
 });
 

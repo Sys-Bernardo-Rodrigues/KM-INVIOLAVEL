@@ -24,22 +24,21 @@
     </ul>
   </div>
   <div class="main-content">
-    
-
     <div class="toolbar" aria-label="Ferramentas de busca">
       <div class="search">
         <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
-        <input id="historico-search" type="text" placeholder="Buscar VTR, modelo ou vigilante..." aria-label="Buscar VTR, modelo ou vigilante">
+        <input id="historico-search" type="text" placeholder="Buscar VTR, modelo ou vigilante..." aria-label="Buscar VTR, modelo ou vigilante" value="<%= (typeof q !== 'undefined' ? q : '') %>">
       </div>
       <div class="date-filters">
         <label class="date-field" for="filter-date-from">
           <span class="date-label">Data início</span>
-          <input type="date" id="filter-date-from" name="data_inicio" aria-label="Filtrar a partir de">
+          <input type="date" id="filter-date-from" name="data_inicio" aria-label="Filtrar a partir de" value="<%= (typeof from !== 'undefined' ? from : '') %>">
         </label>
         <label class="date-field" for="filter-date-to">
           <span class="date-label">Data fim</span>
-          <input type="date" id="filter-date-to" name="data_fim" aria-label="Filtrar até">
+          <input type="date" id="filter-date-to" name="data_fim" aria-label="Filtrar até" value="<%= (typeof to !== 'undefined' ? to : '') %>">
         </label>
+        <button id="exportar-pdf" class="btn" style="margin-left:12px;"><i class="fas fa-file-pdf"></i> Exportar PDF</button>
       </div>
     </div>
 
@@ -108,6 +107,7 @@
     const paginationEl = document.getElementById('historico-pagination');
     const dateFromInput = document.getElementById('filter-date-from');
     const dateToInput = document.getElementById('filter-date-to');
+    const exportBtn = document.getElementById('exportar-pdf');
 
     let currentPage = 1;
     const pageSize = 8;
@@ -270,6 +270,15 @@
 
     // Primeira execução
     filtrarTabela();
+
+    // Exportação em PDF: monta querystring com filtros atuais
+    exportBtn.addEventListener('click', () => {
+      const q = encodeURIComponent(searchInput.value || '');
+      const from = encodeURIComponent(dateFromInput.value || '');
+      const to = encodeURIComponent(dateToInput.value || '');
+      const qs = `q=${q}&from=${from}&to=${to}`;
+      window.open(`/historico/export-pdf?${qs}`, '_blank');
+    });
   </script>
 </body>
 </html>
