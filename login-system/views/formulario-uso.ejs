@@ -125,6 +125,18 @@
         <label for="vigilante_inicio">Nome do Motorista</label>
         <input type="text" name="vigilante_inicio" id="vigilante_inicio" required autocomplete="name" value="<%= username %>" readonly>
       </div>
+      <div class="form-group">
+        <label>Encontrou avarias?</label>
+        <select name="avarias" id="avarias_abertura" required>
+          <option value="">Selecione</option>
+          <option value="Sim">Sim</option>
+          <option value="Não">Não</option>
+        </select>
+      </div>
+      <div class="form-group hidden" id="observacoes-abertura-box">
+        <label for="observacoes_abertura">Descreva as Avarias</label>
+        <input type="text" name="observacoes" id="observacoes_abertura">
+      </div>
       <button type="submit" class="btn btn-purple full">Abrir Uso</button>
     </form>
     </div>
@@ -260,15 +272,33 @@
       }
     });
 
-    document.getElementById('avarias').addEventListener('change', e => {
-      if (e.target.value === 'Sim') {
-        observacoesBox.classList.remove('hidden');
-        document.getElementById('observacoes').required = true;
-      } else {
-        observacoesBox.classList.add('hidden');
-        document.getElementById('observacoes').required = false;
-      }
-    });
+    const avariasEncerramento = document.getElementById('avarias');
+    if (avariasEncerramento) {
+      avariasEncerramento.addEventListener('change', e => {
+        if (e.target.value === 'Sim') {
+          observacoesBox.classList.remove('hidden');
+          document.getElementById('observacoes').required = true;
+        } else {
+          observacoesBox.classList.add('hidden');
+          document.getElementById('observacoes').required = false;
+        }
+      });
+    }
+
+    const avariasAbertura = document.getElementById('avarias_abertura');
+    const observacoesAberturaBox = document.getElementById('observacoes-abertura-box');
+    if (avariasAbertura) {
+      avariasAbertura.addEventListener('change', e => {
+        const obsAbertura = document.getElementById('observacoes_abertura');
+        if (e.target.value === 'Sim') {
+          observacoesAberturaBox.classList.remove('hidden');
+          if (obsAbertura) obsAbertura.required = true;
+        } else {
+          observacoesAberturaBox.classList.add('hidden');
+          if (obsAbertura) obsAbertura.required = false;
+        }
+      });
+    }
 
     async function enviarJsonFormulario(form, endpoint, sucessoMsg) {
       const formData = new FormData(form);

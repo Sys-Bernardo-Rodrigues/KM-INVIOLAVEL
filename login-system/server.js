@@ -121,7 +121,8 @@ app.get('/login', (req, res) => {
 });
 
 app.post('/login', (req, res) => {
-    const { username, password } = req.body;
+    const username = req.body.username ? req.body.username.toLowerCase() : '';
+    const { password } = req.body;
 
     db.get("SELECT * FROM usuarios WHERE username = ?", [username], async (err, user) => {
         if (err) return res.status(500).send('Erro interno no servidor.');
@@ -414,6 +415,19 @@ app.get('/uso-veiculo', authorizeRoles(['USUARIO']), (req, res) => {
     });
 });
 
+// Prévia pública do formulário de uso (sem login) para validação visual
+app.get('/uso-veiculo-preview', (req, res) => {
+    db.all("SELECT * FROM carros", (err, vtrs) => {
+        if (err) return res.send("Erro ao carregar veículos.");
+        res.render('formulario-uso', {
+            vtrs,
+            username: req.session?.username || 'usuario.demo',
+            role: req.session?.role || 'USUARIO',
+            usos_ativos: []
+        });
+    });
+});
+
 // Verifica status atual do veículo
 app.get('/status-veiculo/:id', (req, res) => {
     const vtrId = req.params.id;
@@ -429,7 +443,7 @@ app.get('/status-veiculo/:id', (req, res) => {
 
 // Abrir novo uso
 app.post('/abrir-uso', authorizeRoles(['USUARIO']), (req, res) => {
-    const { vtr_id, km_inicial } = req.body;
+    const { vtr_id, km_inicial, avarias, observacoes } = req.body;
     const vigilante_inicio = req.session.username; // força motorista como usuário logado
     const agora = new Date().toISOString();
 
@@ -457,9 +471,9 @@ app.post('/abrir-uso', authorizeRoles(['USUARIO']), (req, res) => {
 
                     const protocoloId = this.lastID;
                     db.run(
-                        `INSERT INTO usos_veiculos (vtr_id, km_inicial, vigilante_inicio, data_inicio, protocolo_id)
-                         VALUES (?, ?, ?, ?, ?)`,
-                        [vtr_id, km_inicial, vigilante_inicio, agora, protocoloId],
+                        `INSERT INTO usos_veiculos (vtr_id, km_inicial, vigilante_inicio, data_inicio, protocolo_id, avarias, observacoes)
+                         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                        [vtr_id, km_inicial, vigilante_inicio, agora, protocoloId, avarias || null, observacoes || null],
                         (errUso) => {
                             if (errUso) {
                                 console.error('Erro ao abrir uso:', errUso);

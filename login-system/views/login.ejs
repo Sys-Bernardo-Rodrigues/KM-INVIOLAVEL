@@ -30,7 +30,7 @@
               <circle cx="12" cy="8" r="4" stroke="#6b7280" stroke-width="2"/>
               <path d="M4 20c0-4 4-6 8-6s8 2 8 6" stroke="#6b7280" stroke-width="2"/>
             </svg>
-            <input id="username" type="text" name="username" placeholder="Seu usuário" autocomplete="username" required>
+            <input id="username" type="text" name="username" placeholder="Seu usuário" autocomplete="username" required onInput="this.value = this.value.toLowerCase()">
           </div>
         </div>
 
@@ -87,7 +87,7 @@
       });
 
       form.addEventListener('submit', (e) => {
-        user.value = (user.value || '').trim();
+        user.value = (user.value || '').trim().toLowerCase();
         pass.value = (pass.value || '').trim();
         if (!user.value || !pass.value) {
           e.preventDefault();
