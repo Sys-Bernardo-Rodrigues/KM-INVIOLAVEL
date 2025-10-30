@@ -343,6 +343,11 @@
                     <i class="fas fa-door-closed" aria-hidden="true"></i>
                     Encerrar
                   </button>
+                <% } else if (role === 'BASE' || role === 'Administrador') { %>
+                  <button class="btn btn-primary" title="Abrir uso do veículo" data-action="abrir-uso">
+                    <i class="fas fa-door-open"></i>
+                    Abrir Uso
+                  </button>
                 <% } else { %>
                   <span class="form-help" title="Veículo livre">—</span>
                 <% } %>
@@ -402,6 +407,40 @@
         <button class="btn" id="cancel-encerrar">Cancelar</button>
         <button class="btn btn-primary" id="confirm-encerrar">Confirmar</button>
       </div>
+    </div>
+  </div>
+  <div id="abrir-uso-backdrop" class="modal-backdrop"></div>
+  <div id="abrir-uso-modal" class="modal" style="display:none;">
+    <header>
+      <div class="title"><i class="fas fa-door-open"></i> Abrir Uso do Veículo</div>
+      <button class="close-btn" id="close-abrir-uso" aria-label="Fechar"><i class="fas fa-times"></i></button>
+    </header>
+    <div class="content">
+      <form id="form-abrir-uso">
+        <input type="hidden" name="vtr_id" id="abrir-uso-vtr-id">
+        <div class="form-group">
+          <label for="abrir-uso-motorista">Motorista</label>
+          <select id="abrir-uso-motorista" name="motorista" required>
+            <option value="">Selecione...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="abrir-uso-km-inicial">KM Inicial</label>
+          <input type="number" id="abrir-uso-km-inicial" name="km_inicial" min="0" step="1" required>
+          <div id="abrir-uso-km-hint" class="form-help"></div>
+        </div>
+        <div class="form-group">
+          <label><input type="checkbox" id="abrir-uso-avaria"> Avaria?</label>
+        </div>
+        <div class="form-group" id="abrir-uso-avaria-detail" style="display:none;">
+          <label for="abrir-uso-avaria-text">Descreva a avaria</label>
+          <input type="text" id="abrir-uso-avaria-text" name="descricao_avaria" placeholder="Se houver avaria, detalhe aqui">
+        </div>
+        <div class="actions">
+          <button type="button" class="btn" id="cancel-abrir-uso">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Abrir Uso</button>
+        </div>
+      </form>
     </div>
   </div>
   <script>
@@ -659,6 +698,89 @@
         }
       });
     })();
+
+    let usuariosCache = null;
+    async function buscarUsuariosMotoristas() {
+      if (!usuariosCache) {
+        try {
+          const resp = await fetch('/admin/listar-usuarios');
+          if (!resp.ok) throw new Error('Falha ao buscar usuários');
+          usuariosCache = await resp.json();
+        } catch(e) { usuariosCache = []; }
+      }
+      return usuariosCache;
+    }
+
+    const modal = document.getElementById('abrir-uso-modal');
+    const backdrop = document.getElementById('abrir-uso-backdrop');
+    const closeBtn = document.getElementById('close-abrir-uso');
+    const cancelBtn = document.getElementById('cancel-abrir-uso');
+    const form = document.getElementById('form-abrir-uso');
+    const selectMotorista = document.getElementById('abrir-uso-motorista');
+    const inputKm = document.getElementById('abrir-uso-km-inicial');
+    const checkboxAvaria = document.getElementById('abrir-uso-avaria');
+    const avariaDetail = document.getElementById('abrir-uso-avaria-detail');
+    const avariaText = document.getElementById('abrir-uso-avaria-text');
+    const kmHint = document.getElementById('abrir-uso-km-hint');
+
+    let vtrAtualId = null;
+
+    document.querySelectorAll('.vtr-table tbody tr').forEach(row => {
+      const btn = row.querySelector('button[data-action="abrir-uso"]');
+      if (btn) {
+        btn.addEventListener('click', async () => {
+          vtrAtualId = row.getAttribute('data-vtr-id');
+          document.getElementById('abrir-uso-vtr-id').value = vtrAtualId;
+          if (selectMotorista.options.length <= 1) {
+            const usuarios = await buscarUsuariosMotoristas();
+            selectMotorista.innerHTML = '<option value="">Selecione...</option>' + usuarios.map(u=>`<option value="${u.username}">${u.username}${u.tipo?' ('+u.tipo+')':''}</option>`).join('');
+          }
+          // Buscar último KM
+          try {
+            kmHint.textContent = '';
+            inputKm.value = '';
+            const resp = await fetch(`/ultimo-km/${vtrAtualId}`);
+            const dados = await resp.json();
+            if (dados && typeof dados.km_final !== 'undefined') {
+              kmHint.textContent = `Último KM registrado: ${dados.km_final}`;
+              inputKm.min = dados.km_final;
+            }
+          } catch (e) { kmHint.textContent = ''; inputKm.min = 0; }
+          avariaDetail.style.display = 'none';
+          avariaText.value = '';
+          checkboxAvaria.checked = false;
+          backdrop.classList.add('open');
+          modal.style.display='block';
+          modal.classList.add('open');
+          setTimeout(()=>selectMotorista?.focus(), 100);
+        });
+      }
+    });
+    closeBtn.addEventListener('click', fecharModal);
+    cancelBtn.addEventListener('click', fecharModal);
+    backdrop.addEventListener('click', fecharModal);
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharModal(); });
+    function fecharModal(){ backdrop.classList.remove('open'); modal.classList.remove('open'); modal.style.display='none'; }
+    checkboxAvaria.addEventListener('change', ()=>{
+      avariaDetail.style.display = checkboxAvaria.checked?'block':'none';
+      avariaText.required = checkboxAvaria.checked;
+    });
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const motorista = selectMotorista.value;
+      const km_inicial = inputKm.value;
+      const avaria = checkboxAvaria.checked? 'Sim':'Não';
+      const descricao = avariaDetail.style.display==='block'? avariaText.value:'NA';
+      if(!motorista||!km_inicial) return;
+      // POST
+      const body = new URLSearchParams({ vtr_id:vtrAtualId, motorista, km_inicial, avaria, descricao }).toString();
+      try {
+        const resp = await fetch('/admin/abrir-uso', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body });
+        const text = await resp.text();
+        if(resp.ok){ fecharModal(); location.reload(); }
+        else alert(text||'Falha ao abrir uso');
+      } catch (e){ alert('Erro ao abrir uso.'); }
+    });
   </script>
 </body>
 </html>

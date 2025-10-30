@@ -247,6 +247,52 @@ app.post('/deletar-carro', authorizeRoles(['BASE']), (req, res) => {
     });
 });
 
+app.get('/admin/listar-usuarios', authorizeRoles(['BASE']), (req, res) => {
+  db.all("SELECT username, tipo FROM usuarios WHERE username != ?", [ADMIN_USERNAME], (err, rows) => {
+    if (err) return res.status(500).json([]);
+    res.json(rows);
+  });
+});
+
+app.post('/admin/abrir-uso', authorizeRoles(['BASE']), (req, res) => {
+  const { vtr_id, motorista, km_inicial, avaria, descricao } = req.body;
+  if (!vtr_id || !motorista || !km_inicial) return res.status(400).send('Dados obrigatórios ausentes.');
+  const agora = new Date().toISOString();
+  db.get("SELECT id FROM usos_veiculos WHERE vtr_id = ? AND em_uso = 1 ORDER BY data_inicio DESC LIMIT 1", [vtr_id], (errActive, usoAtivo) => {
+    if (errActive) return res.status(500).send("Erro ao verificar uso ativo.");
+    if (usoAtivo) return res.status(400).send("Veículo já está em uso, não é possível abrir novo uso.");
+    db.get("SELECT id, numero_vtr, tipo, modelo FROM carros WHERE id = ?", [vtr_id], (errCar, vtr) => {
+      if (errCar || !vtr) return res.status(400).send("Veículo não encontrado.");
+      const protocoloCodigo = `PRT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      db.run(`
+        INSERT INTO protocolos_uso (protocolo_codigo, vtr_id, numero_vtr_snapshot, tipo_snapshot, modelo_snapshot, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `, [protocoloCodigo, vtr.id, vtr.numero_vtr, vtr.tipo, vtr.modelo, agora], function(errProt) {
+        if (errProt) return res.status(500).send("Erro ao criar protocolo de uso.");
+        const protocoloId = this.lastID;
+        db.run(
+          `INSERT INTO usos_veiculos (vtr_id, km_inicial, vigilante_inicio, data_inicio, em_uso, protocolo_id, abastecimento, avarias, observacoes)
+           VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)`,
+          [vtr_id, km_inicial, motorista, agora, protocoloId, /* abastecimento */ 'Não', avaria, descricao],
+          (errUso) => {
+            if (errUso) return res.status(500).send("Falha ao abrir novo uso do veículo.");
+            // Atualiza km_base
+            const kmInicialNum = Number(km_inicial);
+            if (Number.isFinite(kmInicialNum) && kmInicialNum >= 0) {
+              db.run("UPDATE carros SET km_base = ? WHERE id = ?", [kmInicialNum, vtr_id], (errUpdate) => {
+                if (errUpdate) console.warn('Aviso ao atualizar km_base:', errUpdate);
+                return res.send("Uso aberto com sucesso.");
+              });
+            } else {
+              res.send("Uso aberto com sucesso.");
+            }
+          }
+        );
+      });
+    });
+  });
+});
+
 function carregarVtrsComMensagem(req, res, mensagem) {
     db.all("SELECT * FROM carros", (err, rows) => {
         if (err) return res.send("Erro ao carregar lista.");
