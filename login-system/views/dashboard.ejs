@@ -671,23 +671,8 @@
 
           if (resp.ok) {
             closeModal();
-            // Atualiza visual da linha rapidamente (sem recarregar)
-            const row = document.querySelector(`.vtr-table tbody tr[data-uso-id="${CSS.escape(String(currentUsoId))}"]`) || document.querySelector(`.vtr-table tbody tr[data-vtr-id="${CSS.escape(String(currentVtrId))}"]`);
-            if (row) {
-              row.setAttribute('data-estado', 'livre');
-              row.classList.remove('in-use');
-              row.classList.add('free');
-              const statusChip = row.querySelector('.status-chip');
-              if (statusChip) {
-                statusChip.classList.remove('busy');
-                statusChip.classList.add('ok');
-                statusChip.innerHTML = '<i class="fas fa-check-circle"></i> LIVRE';
-              }
-              const motoristaCell = row.querySelector('.cell-motorista');
-              if (motoristaCell) motoristaCell.textContent = '-';
-              const actionCellBtn = row.querySelector('button[data-action="encerrar"]');
-              if (actionCellBtn) actionCellBtn.replaceWith(Object.assign(document.createElement('span'), { className: 'form-help', textContent: '—' }));
-            }
+            // Recarrega a página para refletir o estado atualizado na tabela
+            location.reload();
           }
         } catch (err) {
           const msg = document.createElement('div');
