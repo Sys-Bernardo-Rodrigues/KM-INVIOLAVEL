@@ -48,6 +48,7 @@
       <thead>
         <tr>
           <th>Veículo</th>
+          <th>Placa</th>
           <th>KM Inicial</th>
           <th>Motorista Início</th>
           <th>Início</th>
@@ -72,6 +73,7 @@
             <td>
               <div class="cell-title"><i class="fas fa-car"></i> <%= r.numero_vtr %> - <%= r.modelo %></div>
             </td>
+            <td><%= r.placa || '-' %></td>
             <td><%= r.km_inicial %></td>
             <td><%= r.vigilante_inicio %></td>
             <td><%= r.data_inicio ? new Date(r.data_inicio).toLocaleString() : '-' %></td>

@@ -37,17 +37,25 @@ db.serialize(() => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         numero_vtr TEXT UNIQUE,
         tipo TEXT,
-        modelo TEXT
+        modelo TEXT,
+        placa TEXT
     )`);
 
     // Migrar coluna km_base se ainda não existir
     db.all("PRAGMA table_info(carros)", [], (err, columns) => {
         if (err) return console.error("Erro ao inspecionar tabela carros:", err);
         const hasKmBase = Array.isArray(columns) && columns.some(c => c.name === 'km_base');
+        const hasPlaca = Array.isArray(columns) && columns.some(c => c.name === 'placa');
         if (!hasKmBase) {
             db.run("ALTER TABLE carros ADD COLUMN km_base INTEGER DEFAULT 0", (alterErr) => {
                 if (alterErr) console.error("Erro ao adicionar coluna km_base:", alterErr);
                 else console.log("Coluna km_base adicionada em carros.");
+            });
+        }
+        if (!hasPlaca) {
+            db.run("ALTER TABLE carros ADD COLUMN placa TEXT", (alterErr) => {
+                if (alterErr) console.error("Erro ao adicionar coluna placa:", alterErr);
+                else console.log("Coluna placa adicionada em carros.");
             });
         }
     });
@@ -224,13 +232,13 @@ app.get('/cadastrar-carro', authorizeRoles(['BASE']), (req, res) => {
 });
 
 app.post('/cadastrar-carro', authorizeRoles(['BASE']), (req, res) => {
-    const { numero_vtr, tipo, modelo } = req.body;
+    const { numero_vtr, tipo, modelo, placa } = req.body;
 
-    if (!numero_vtr || !tipo || !modelo) {
-        return carregarVtrsComMensagem(req, res, 'Preencha todos os campos.');
+    if (!numero_vtr || !tipo || !modelo || !placa) {
+        return carregarVtrsComMensagem(req, res, 'Preencha todos os campos (incluindo placa).');
     }
 
-    db.run("INSERT INTO carros (numero_vtr, tipo, modelo) VALUES (?, ?, ?)", [numero_vtr, tipo, modelo], (err) => {
+    db.run("INSERT INTO carros (numero_vtr, tipo, modelo, placa) VALUES (?, ?, ?, ?)", [numero_vtr, tipo, modelo, placa], (err) => {
         const msg = err?.message.includes("UNIQUE")
             ? "Este VTR já está cadastrado."
             : err ? "Erro ao salvar." : "Veículo cadastrado com sucesso!";
@@ -529,9 +537,14 @@ app.post('/encerrar-uso', authorizeRoles(['USUARIO', 'BASE']), (req, res) => {
 // Histórico
 app.get('/historico', authorizeRoles(['BASE']), (req, res) => {
     const sql = `
-        SELECT u.*, p.numero_vtr_snapshot AS numero_vtr, p.modelo_snapshot AS modelo, p.protocolo_codigo
+        SELECT u.*, 
+               p.numero_vtr_snapshot AS numero_vtr, 
+               p.modelo_snapshot AS modelo, 
+               p.protocolo_codigo,
+               c.placa AS placa
         FROM usos_veiculos u
         JOIN protocolos_uso p ON p.id = u.protocolo_id
+        LEFT JOIN carros c ON c.id = u.vtr_id
         ORDER BY u.data_inicio DESC
     `;
     db.all(sql, [], (err, rows) => {
