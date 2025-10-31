@@ -4,8 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "npm run test:pdf",
+    "test": "npm run test:km && npm run test:pdf",
     "test:pdf": "node test/test-pdf.js",
+    "test:km": "node test/test-km.js",
     "start": "node server.js"
   },
   "keywords": [],

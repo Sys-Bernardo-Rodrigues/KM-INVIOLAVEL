@@ -29,33 +29,278 @@
   </div>
 
   <div class="main-content">
-    <div class="page-title"><i class="fas fa-chart-line"></i> Gráficos de Uso</div>
+    <div class="toolbar" aria-label="Filtros e Ações">
+      <div class="title-group">
+        <div class="page-title"><i class="fas fa-chart-line"></i> Gráficos de Quilometragem</div>
+        <p class="form-help">Visualize e compare KM por usuário e por viatura em diferentes períodos.</p>
+      </div>
+      <div class="filters" style="flex-wrap: wrap; gap: 8px;">
+        <button id="export-csv-user" class="btn"><i class="fas fa-file-csv"></i> Exportar Usuário (CSV)</button>
+        <button id="export-pdf-user" class="btn"><i class="fas fa-file-pdf"></i> Exportar Usuário (PDF)</button>
+        <button id="export-csv-vtr" class="btn"><i class="fas fa-file-csv"></i> Exportar VTR (CSV)</button>
+        <button id="export-pdf-vtr" class="btn"><i class="fas fa-file-pdf"></i> Exportar VTR (PDF)</button>
+      </div>
+    </div>
+
+    <div class="cards" style="margin-bottom: 16px;">
+      <div class="card" style="grid-column: 1 / -1;">
+        <h3><i class="fas fa-user"></i> Filtros por Usuário</h3>
+        <div class="chip-row" style="gap:12px;">
+          <label class="date-field" style="min-width:220px;">
+            <span class="date-label">Usuário</span>
+            <select id="f-user" style="width:100%; padding:6px 8px; border:1px solid var(--border); border-radius:10px;"></select>
+          </label>
+          <label class="date-field">
+            <span class="date-label">Granularidade</span>
+            <select id="f-user-granularity" style="padding:6px 8px; border:1px solid var(--border); border-radius:10px;">
+              <option value="dia">Dia</option>
+              <option value="mes">Mês</option>
+              <option value="ano">Ano</option>
+            </select>
+          </label>
+          <label class="date-field" for="f-user-from">
+            <span class="date-label">Data início</span>
+            <input type="date" id="f-user-from">
+          </label>
+          <label class="date-field" for="f-user-to">
+            <span class="date-label">Data fim</span>
+            <input type="date" id="f-user-to">
+          </label>
+          <label class="chip" style="cursor:pointer;">
+            <input type="checkbox" id="f-user-compare" style="margin-right:6px;"> Comparar período
+          </label>
+          <div id="f-user-compare-range" style="display:none; gap:12px;">
+            <label class="date-field" for="f-user-from2">
+              <span class="date-label">Comparar: início</span>
+              <input type="date" id="f-user-from2">
+            </label>
+            <label class="date-field" for="f-user-to2">
+              <span class="date-label">Comparar: fim</span>
+              <input type="date" id="f-user-to2">
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="grid-column: 1 / -1;">
+        <h3><i class="fas fa-car"></i> Filtros por VTR</h3>
+        <div class="chip-row" style="gap:12px;">
+          <label class="date-field" style="min-width:280px;">
+            <span class="date-label">VTR(s)</span>
+            <select id="f-vtr" multiple size="4" style="width:100%; padding:6px 8px; border:1px solid var(--border); border-radius:10px;"></select>
+          </label>
+          <label class="date-field">
+            <span class="date-label">Granularidade</span>
+            <select id="f-vtr-granularity" style="padding:6px 8px; border:1px solid var(--border); border-radius:10px;">
+              <option value="dia">Dia</option>
+              <option value="mes">Mês</option>
+              <option value="ano">Ano</option>
+            </select>
+          </label>
+          <label class="date-field" for="f-vtr-from">
+            <span class="date-label">Data início</span>
+            <input type="date" id="f-vtr-from">
+          </label>
+          <label class="date-field" for="f-vtr-to">
+            <span class="date-label">Data fim</span>
+            <input type="date" id="f-vtr-to">
+          </label>
+        </div>
+      </div>
+    </div>
+
     <div class="table-card" style="padding: 16px;">
-      <p class="form-help">Visualização inicial. Podemos integrar dados reais conforme necessidade.</p>
-      <canvas id="graficoUso" height="120"></canvas>
+      <h3><i class="fas fa-chart-line"></i> KM por Usuário</h3>
+      <canvas id="chartUserKm" height="120" aria-label="Gráfico de KM por Usuário"></canvas>
+      <div id="chartUserError" class="form-help" style="display:none; color:#dc2626;">Erro ao carregar dados de usuário.</div>
+    </div>
+
+    <div class="table-card" style="padding: 16px; margin-top:16px;">
+      <h3><i class="fas fa-chart-line"></i> KM por VTR</h3>
+      <canvas id="chartVtrKm" height="120" aria-label="Gráfico de KM por VTR"></canvas>
+      <div id="chartVtrError" class="form-help" style="display:none; color:#dc2626;">Erro ao carregar dados de VTR.</div>
     </div>
   </div>
 
   <script>
-    // Exemplo simples de gráfico estático para validação visual
-    const ctx = document.getElementById('graficoUso');
-    if (ctx) {
-      new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
-          datasets: [{
-            label: 'Usos por dia',
-            data: [5, 7, 4, 8, 6, 2, 3],
-            backgroundColor: '#7c3aed'
-          }]
-        },
-        options: {
-          scales: { y: { beginAtZero: true } },
-          plugins: { legend: { display: true } }
-        }
-      });
+    const userSelect = document.getElementById('f-user');
+    const userGranularity = document.getElementById('f-user-granularity');
+    const userFrom = document.getElementById('f-user-from');
+    const userTo = document.getElementById('f-user-to');
+    const userCompare = document.getElementById('f-user-compare');
+    const userCompareRange = document.getElementById('f-user-compare-range');
+    const userFrom2 = document.getElementById('f-user-from2');
+    const userTo2 = document.getElementById('f-user-to2');
+    const vtrSelect = document.getElementById('f-vtr');
+    const vtrGranularity = document.getElementById('f-vtr-granularity');
+    const vtrFrom = document.getElementById('f-vtr-from');
+    const vtrTo = document.getElementById('f-vtr-to');
+    const userError = document.getElementById('chartUserError');
+    const vtrError = document.getElementById('chartVtrError');
+    let chartUser, chartVtr;
+
+    userCompare.addEventListener('change', () => {
+      userCompareRange.style.display = userCompare.checked ? 'flex' : 'none';
+      renderUserChart();
+    });
+
+    async function loadLists() {
+      // Usuários
+      try {
+        const resUsers = await fetch('/admin/listar-usuarios', { cache: 'no-store' });
+        const users = await resUsers.json();
+        userSelect.innerHTML = '';
+        // inclui o usuário atual
+        const currentUser = '<%= username %>';
+        const optCurrent = document.createElement('option');
+        optCurrent.value = currentUser; optCurrent.textContent = currentUser;
+        userSelect.appendChild(optCurrent);
+        users.forEach(u => {
+          const opt = document.createElement('option');
+          opt.value = u.username; opt.textContent = `${u.username} (${u.tipo})`;
+          userSelect.appendChild(opt);
+        });
+        userSelect.value = currentUser;
+      } catch (e) {}
+      // VTRs
+      try {
+        const resVtrs = await fetch('/graficos/lista-vtrs', { cache: 'no-store' });
+        const vtrs = await resVtrs.json();
+        vtrSelect.innerHTML = '';
+        vtrs.forEach(v => {
+          const opt = document.createElement('option');
+          opt.value = String(v.id);
+          opt.textContent = `${v.numero_vtr} - ${v.modelo}`;
+          vtrSelect.appendChild(opt);
+        });
+      } catch (e) {}
     }
+
+    function buildQuery(params) {
+      const esc = encodeURIComponent;
+      return Object.entries(params).filter(([_,v]) => v !== undefined && v !== '').map(([k,v]) => `${esc(k)}=${esc(v)}`).join('&');
+    }
+
+    function buildUserParams(compare=false) {
+      const params = {
+        user: userSelect.value,
+        granularity: userGranularity.value,
+        from: userFrom.value,
+        to: userTo.value,
+      };
+      if (compare && userCompare.checked) {
+        return [params, { ...params, from: userFrom2.value, to: userTo2.value }];
+      }
+      return [params];
+    }
+
+    async function renderUserChart() {
+      userError.style.display = 'none';
+      const [p1, p2] = buildUserParams(true);
+      if (!p1.user) { userError.textContent = 'Selecione um usuário'; userError.style.display = 'block'; return; }
+      try {
+        const res1 = await fetch(`/graficos/data/usuarios?${buildQuery(p1)}`, { cache: 'no-store' });
+        const data1 = await res1.json();
+        const labels = data1.data.map(d => d.periodo);
+        const vals1 = data1.data.map(d => Number(d.km_total || 0));
+        let datasets = [{ label: `KM (${data1.user})`, data: vals1, backgroundColor: '#7c3aed' }];
+        if (p2 && p2.from && p2.to) {
+          const res2 = await fetch(`/graficos/data/usuarios?${buildQuery(p2)}`, { cache: 'no-store' });
+          const data2 = await res2.json();
+          const vals2 = data2.data.map(d => Number(d.km_total || 0));
+          datasets.push({ label: `Comparativo (${p2.from} a ${p2.to})`, data: vals2, backgroundColor: '#22c55e' });
+        }
+        if (chartUser) chartUser.destroy();
+        chartUser = new Chart(document.getElementById('chartUserKm'), {
+          type: 'bar',
+          data: { labels, datasets },
+          options: { responsive: true, scales: { y: { beginAtZero: true } } }
+        });
+      } catch (e) {
+        userError.textContent = 'Erro ao carregar dados de usuário';
+        userError.style.display = 'block';
+      }
+    }
+
+    function buildVtrParams() {
+      const selected = Array.from(vtrSelect.selectedOptions).map(o => o.value).join(',');
+      return {
+        vtrId: selected,
+        granularity: vtrGranularity.value,
+        from: vtrFrom.value,
+        to: vtrTo.value,
+      };
+    }
+
+    async function renderVtrChart() {
+      vtrError.style.display = 'none';
+      const p = buildVtrParams();
+      if (!p.vtrId) { vtrError.textContent = 'Selecione ao menos uma VTR'; vtrError.style.display = 'block'; return; }
+      try {
+        const res = await fetch(`/graficos/data/vtrs?${buildQuery(p)}`, { cache: 'no-store' });
+        const data = await res.json();
+        const labels = Array.from(new Set(data.data.map(d => d.periodo)));
+        const idToLabel = data.labels || {};
+        const groupByVtr = {};
+        data.data.forEach(d => {
+          (groupByVtr[d.vtr_id] = groupByVtr[d.vtr_id] || []).push(d);
+        });
+        const datasets = Object.keys(groupByVtr).map(id => {
+          const series = groupByVtr[id];
+          const values = labels.map(l => {
+            const found = series.find(s => s.periodo === l);
+            return Number(found?.km_total || 0);
+          });
+          const color = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
+          return { label: idToLabel[id] || `VTR ${id}`, data: values, backgroundColor: color };
+        });
+        if (chartVtr) chartVtr.destroy();
+        chartVtr = new Chart(document.getElementById('chartVtrKm'), {
+          type: 'bar',
+          data: { labels, datasets },
+          options: { responsive: true, scales: { y: { beginAtZero: true } }, plugins: { legend: { position: 'bottom' } } }
+        });
+      } catch (e) {
+        vtrError.textContent = 'Erro ao carregar dados de VTR';
+        vtrError.style.display = 'block';
+      }
+    }
+
+    // Exportações
+    document.getElementById('export-csv-user').addEventListener('click', () => {
+      const [p1] = buildUserParams(false);
+      const q = buildQuery({ type: 'usuario', ...p1 });
+      window.open(`/graficos/export-csv?${q}`, '_blank');
+    });
+    document.getElementById('export-pdf-user').addEventListener('click', () => {
+      const [p1] = buildUserParams(false);
+      const q = buildQuery({ type: 'usuario', ...p1 });
+      window.open(`/graficos/export-pdf?${q}`, '_blank');
+    });
+    document.getElementById('export-csv-vtr').addEventListener('click', () => {
+      const p = buildVtrParams();
+      const q = buildQuery({ type: 'vtr', ...p });
+      window.open(`/graficos/export-csv?${q}`, '_blank');
+    });
+    document.getElementById('export-pdf-vtr').addEventListener('click', () => {
+      const p = buildVtrParams();
+      const q = buildQuery({ type: 'vtr', ...p });
+      window.open(`/graficos/export-pdf?${q}`, '_blank');
+    });
+
+    // Eventos
+    ['change','input'].forEach(evt => {
+      userSelect.addEventListener(evt, renderUserChart);
+      userGranularity.addEventListener(evt, renderUserChart);
+      userFrom.addEventListener(evt, renderUserChart);
+      userTo.addEventListener(evt, renderUserChart);
+      vtrSelect.addEventListener(evt, renderVtrChart);
+      vtrGranularity.addEventListener(evt, renderVtrChart);
+      vtrFrom.addEventListener(evt, renderVtrChart);
+      vtrTo.addEventListener(evt, renderVtrChart);
+    });
+
+    // Inicialização
+    loadLists().then(() => { renderUserChart(); renderVtrChart(); });
   </script>
 </body>
 </html>

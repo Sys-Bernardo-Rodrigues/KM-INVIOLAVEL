@@ -5,6 +5,7 @@ const path = require('path');
 const bcrypt = require('bcrypt');
 const db = require('./database');
 const { renderHistoricoPdfToResponse } = require('./utils/pdf');
+const { SimpleCache } = require('./utils/cache');
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3932;
@@ -750,4 +751,229 @@ app.get('/ultimo-km/:vtrId', (req, res) => {
 // Inicia servidor HTTP normal
 app.listen(PORT, () => {
   console.log(`Servidor HTTP rodando em http://localhost:${PORT}`);
+});
+// Cache de consultas de gráficos
+const graphsCache = new SimpleCache({ ttlMs: 60 * 1000, maxEntries: 500 });
+
+function parseDateRange(req) {
+  const from = (req.query.from || '').trim();
+  const to = (req.query.to || '').trim();
+  let where = '';
+  const params = [];
+  const clauses = [];
+  if (from) { clauses.push('COALESCE(u.data_fim, u.data_inicio) >= ?'); params.push(`${from}T00:00:00`); }
+  if (to) { clauses.push('COALESCE(u.data_fim, u.data_inicio) <= ?'); params.push(`${to}T23:59:59`); }
+  if (clauses.length) { where = 'WHERE ' + clauses.join(' AND '); }
+  return { where, params };
+}
+
+function granularityExpr(granularity) {
+  const g = String(granularity || 'dia').toLowerCase();
+  if (g === 'ano') return "STRFTIME('%Y', COALESCE(u.data_fim, u.data_inicio))";
+  if (g === 'mes') return "STRFTIME('%Y-%m', COALESCE(u.data_fim, u.data_inicio))";
+  return "DATE(COALESCE(u.data_fim, u.data_inicio))"; // dia
+}
+
+function kmDeltaExpr() {
+  // Garante: valores numéricos, não negativos e km_final >= km_inicial.
+  // Para registros inválidos, contabiliza 0 no agregado.
+  return `CASE
+    WHEN u.km_final IS NOT NULL
+     AND u.km_inicial IS NOT NULL
+     AND u.km_inicial >= 0
+     AND u.km_final >= 0
+     AND u.km_final >= u.km_inicial
+    THEN (u.km_final - u.km_inicial)
+    ELSE 0
+  END`;
+}
+
+function cacheKey(prefix, query) {
+  const entries = Object.entries(query).sort(([a],[b]) => a.localeCompare(b));
+  return prefix + ':' + entries.map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+}
+
+// Lista de VTRs para filtros
+app.get('/graficos/lista-vtrs', authorizeRoles(['BASE']), (req, res) => {
+  db.all('SELECT id, numero_vtr, modelo, tipo FROM carros ORDER BY numero_vtr ASC', [], (err, rows) => {
+    if (err) return res.status(500).json([]);
+    res.json(rows);
+  });
+});
+
+// Dados agregados por usuário
+app.get('/graficos/data/usuarios', authorizeRoles(['BASE']), (req, res) => {
+  const username = (req.query.user || '').trim();
+  const granularity = (req.query.granularity || 'dia').trim();
+  if (!username) return res.status(400).json({ erro: 'Parâmetro user é obrigatório.' });
+
+  const ck = cacheKey('user', req.query);
+  const cached = graphsCache.get(ck);
+  if (cached) return res.json(cached);
+
+  const { where, params } = parseDateRange(req);
+  const gExpr = granularityExpr(granularity);
+  const delta = kmDeltaExpr();
+  const sql = `
+    SELECT ${gExpr} AS periodo, SUM(${delta}) AS km_total
+    FROM usos_veiculos u
+    ${where ? where + ' AND ' : 'WHERE '} (u.vigilante_inicio = ? OR u.vigilante_fim = ?)
+    GROUP BY periodo
+    ORDER BY periodo ASC
+  `;
+  db.all(sql, [...params, username, username], (err, rows) => {
+    if (err) return res.status(500).json({ erro: 'Falha ao consultar km por usuário.' });
+    const result = { granularity, user: username, data: rows };
+    graphsCache.set(ck, result);
+    res.json(result);
+  });
+});
+
+// Dados agregados por VTR (aceita múltiplos ids via vtrId=1,2,3)
+app.get('/graficos/data/vtrs', authorizeRoles(['BASE']), (req, res) => {
+  const vtrIdsParam = (req.query.vtrId || '').trim();
+  const granularity = (req.query.granularity || 'dia').trim();
+  if (!vtrIdsParam) return res.status(400).json({ erro: 'Parâmetro vtrId é obrigatório.' });
+  const vtrIds = vtrIdsParam.split(',').map(s => s.trim()).filter(Boolean);
+  if (!vtrIds.length) return res.status(400).json({ erro: 'Nenhum vtrId válido informado.' });
+
+  const ck = cacheKey('vtr', req.query);
+  const cached = graphsCache.get(ck);
+  if (cached) return res.json(cached);
+
+  const { where, params } = parseDateRange(req);
+  const gExpr = granularityExpr(granularity);
+  const delta = kmDeltaExpr();
+
+  // Monta SQL com IN (...) seguro via placeholders
+  const placeholders = vtrIds.map(() => '?').join(',');
+  const sql = `
+    SELECT ${gExpr} AS periodo, u.vtr_id, SUM(${delta}) AS km_total
+    FROM usos_veiculos u
+    ${where ? where + ' AND ' : 'WHERE '} u.vtr_id IN (${placeholders})
+    GROUP BY periodo, u.vtr_id
+    ORDER BY periodo ASC
+  `;
+  db.all(sql, [...params, ...vtrIds], (err, rows) => {
+    if (err) return res.status(500).json({ erro: 'Falha ao consultar km por VTR.' });
+    // Enriquecer com labels
+    db.all('SELECT id, numero_vtr, modelo FROM carros WHERE id IN (' + placeholders + ')', vtrIds, (err2, vtrs) => {
+      const labels = {};
+      if (!err2 && Array.isArray(vtrs)) {
+        vtrs.forEach(v => { labels[v.id] = `${v.numero_vtr} - ${v.modelo}`; });
+      }
+      const result = { granularity, vtrIds, labels, data: rows };
+      graphsCache.set(ck, result);
+      res.json(result);
+    });
+  });
+});
+
+// Exportação CSV dos dados agregados
+app.get('/graficos/export-csv', authorizeRoles(['BASE']), (req, res) => {
+  const type = (req.query.type || '').trim();
+  if (!['usuario','vtr'].includes(type)) return res.status(400).send('type deve ser usuario ou vtr');
+  const ck = cacheKey('export:'+type, req.query);
+  let cached = graphsCache.get(ck);
+  const toCsv = (rows, headers) => {
+    const escape = (v) => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+    const head = headers.map(h => escape(h)).join(',');
+    const body = rows.map(r => headers.map(h => escape(r[h])).join(',')).join('\n');
+    return head + '\n' + body;
+  };
+  const sendCsv = (rows, headers, name) => {
+    const csv = toCsv(rows, headers);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${name}_${Date.now()}.csv"`);
+    return res.send(csv);
+  };
+  if (cached) {
+    const rows = cached.rows;
+    const headers = cached.headers;
+    const name = cached.name;
+    return sendCsv(rows, headers, name);
+  }
+  if (type === 'usuario') {
+    req.query.granularity = req.query.granularity || 'dia';
+    const { where, params } = parseDateRange(req);
+    const gExpr = granularityExpr(req.query.granularity);
+    const delta = kmDeltaExpr();
+    const sql = `
+      SELECT ${gExpr} AS periodo, u.vigilante_inicio AS usuario, SUM(${delta}) AS km_total
+      FROM usos_veiculos u
+      ${where}
+      GROUP BY periodo, usuario
+      ORDER BY periodo ASC
+    `;
+    db.all(sql, params, (err, rows) => {
+      if (err) return res.status(500).send('Erro ao exportar CSV.');
+      const headers = ['periodo','usuario','km_total'];
+      graphsCache.set(ck, { rows, headers, name: 'km_usuario' });
+      return sendCsv(rows, headers, 'km_usuario');
+    });
+  } else {
+    // vtr
+    req.query.granularity = req.query.granularity || 'dia';
+    const vtrIdsParam = (req.query.vtrId || '').trim();
+    const vtrIds = vtrIdsParam ? vtrIdsParam.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const { where, params } = parseDateRange(req);
+    const gExpr = granularityExpr(req.query.granularity);
+    const delta = kmDeltaExpr();
+    const placeholders = vtrIds.length ? vtrIds.map(() => '?').join(',') : '';
+    const sql = `
+      SELECT ${gExpr} AS periodo, u.vtr_id, SUM(${delta}) AS km_total
+      FROM usos_veiculos u
+      ${where ? where + (vtrIds.length ? ' AND ' : '') : (vtrIds.length ? 'WHERE ' : '')} ${vtrIds.length ? 'u.vtr_id IN ('+placeholders+')' : ''}
+      GROUP BY periodo, u.vtr_id
+      ORDER BY periodo ASC
+    `;
+    db.all(sql, [...params, ...vtrIds], (err, rows) => {
+      if (err) return res.status(500).send('Erro ao exportar CSV.');
+      const headers = ['periodo','vtr_id','km_total'];
+      graphsCache.set(ck, { rows, headers, name: 'km_vtr' });
+      return sendCsv(rows, headers, 'km_vtr');
+    });
+  }
+});
+
+// Exportação PDF dos dados agregados (sumário)
+app.get('/graficos/export-pdf', authorizeRoles(['BASE']), (req, res) => {
+  const type = (req.query.type || '').trim();
+  const granularity = (req.query.granularity || 'dia').trim();
+  const { where, params } = parseDateRange(req);
+  const gExpr = granularityExpr(granularity);
+  const delta = kmDeltaExpr();
+  let sql, dataKey;
+  if (type === 'usuario') {
+    sql = `SELECT ${gExpr} AS periodo, u.vigilante_inicio AS usuario, SUM(${delta}) AS km_total FROM usos_veiculos u ${where} GROUP BY periodo, usuario ORDER BY periodo ASC`;
+    dataKey = 'usuario';
+  } else {
+    sql = `SELECT ${gExpr} AS periodo, u.vtr_id AS vtr_id, SUM(${delta}) AS km_total FROM usos_veiculos u ${where} GROUP BY periodo, vtr_id ORDER BY periodo ASC`;
+    dataKey = 'vtr_id';
+  }
+  db.all(sql, params, (err, rows) => {
+    if (err) return res.status(500).send('Erro ao exportar PDF.');
+    // Gera PDF simples com tabela de período e valor
+    const PDFDocument = require('pdfkit');
+    const doc = new PDFDocument({ size: 'A4', layout: 'portrait', margin: 40 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="graficos_${type}_${Date.now()}.pdf"`);
+    doc.pipe(res);
+    doc.font('Helvetica-Bold').fontSize(16).text(`Resumo de KM (${type})`, { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(10).text(`Granularidade: ${granularity}`);
+    if (req.query.from) doc.text(`De: ${req.query.from}`);
+    if (req.query.to) doc.text(`Até: ${req.query.to}`);
+    doc.moveDown();
+    const headers = ['Período', type === 'usuario' ? 'Usuário' : 'VTR', 'KM Total'];
+    doc.font('Helvetica-Bold');
+    doc.text(headers.join(' | '));
+    doc.moveDown(0.3);
+    doc.font('Helvetica');
+    rows.forEach(r => {
+      const line = `${r.periodo} | ${r[dataKey] ?? '-'} | ${Number(r.km_total || 0).toFixed(2)}`;
+      doc.text(line);
+    });
+    doc.end();
+  });
 });
