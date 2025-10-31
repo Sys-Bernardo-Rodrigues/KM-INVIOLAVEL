@@ -602,6 +602,25 @@ select {
 }
 .btn-danger:hover { background: #b91c1c; }
 
+/* Botão de edição (violeta suave) */
+.btn-edit {
+  background: #eef2ff; /* violet-100 */
+  color: #7c3aed;      /* violet-600 */
+  border-color: #ddd6fe; /* violet-200 */
+}
+.btn-edit:hover { background: #e9d5ff; /* purple-200 */ }
+
+/* Mantém botões de ação inline na tabela */
+.user-table .btn-edit {
+  width: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-left: 8px;
+}
+
 /* Botão roxo para login */
 .btn-purple {
   background: #7c3aed; /* violet-600 */

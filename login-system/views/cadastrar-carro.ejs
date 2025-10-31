@@ -105,6 +105,7 @@
                   <input type="hidden" name="id" value="<%= vtr.id %>">
                   <button type="submit" class="btn-delete btn-icon" aria-label="Excluir" title="Excluir"><i class="fas fa-trash"></i></button>
                 </form>
+                <button type="button" class="btn-edit btn-icon" aria-label="Editar" title="Editar"><i class="fas fa-pen"></i></button>
               </td>
             </tr>
           <% }) %>
@@ -129,7 +130,47 @@
         </div>
       </div>
 
-      
+      <!-- Modal de edição de veículo -->
+      <div id="edit-vtr-backdrop" class="modal-backdrop" aria-hidden="true"></div>
+      <div id="edit-vtr-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-vtr-title" style="display:none;">
+        <header>
+          <div id="edit-vtr-title" class="title"><i class="fas fa-pen"></i> Editar Veículo</div>
+          <button id="close-edit-vtr" class="close-btn" aria-label="Fechar">
+            <i class="fas fa-times"></i>
+          </button>
+        </header>
+        <div class="content">
+          <form action="/editar-carro" method="POST" class="vtr-edit-form">
+            <input type="hidden" name="id" id="edit-id">
+            <div class="form-group">
+              <label for="edit-numero_vtr">Número do VTR</label>
+              <input type="text" name="numero_vtr" id="edit-numero_vtr" required>
+            </div>
+            <div class="form-group">
+              <label for="edit-tipo">Tipo</label>
+              <select name="tipo" id="edit-tipo" required>
+                <option value="">Selecione</option>
+                <option value="Carro">Carro</option>
+                <option value="Moto">Moto</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="edit-modelo">Modelo</label>
+              <input type="text" name="modelo" id="edit-modelo" required>
+            </div>
+            <div class="form-group">
+              <label for="edit-placa">Placa</label>
+              <input type="text" name="placa" id="edit-placa" placeholder="Ex.: ABC1234 ou ABC1D23" required>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+              <button type="button" id="cancel-edit-vtr" class="btn btn-icon" aria-label="Cancelar" title="Cancelar"><i class="fas fa-times"></i></button>
+              <button type="submit" class="btn btn-primary btn-icon" aria-label="Salvar" title="Salvar"><i class="fas fa-floppy-disk"></i></button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+
     <% } %>
   </div>
   <script>
@@ -223,6 +264,69 @@
       } catch (err) {
         el.innerHTML = `<i class="fas fa-triangle-exclamation"></i> N/D`;
       }
+    });
+
+    // Controle do modal de edição
+    const editModal = document.getElementById('edit-vtr-modal');
+    const editBackdrop = document.getElementById('edit-vtr-backdrop');
+    const editCloseBtn = document.getElementById('close-edit-vtr');
+    const editCancelBtn = document.getElementById('cancel-edit-vtr');
+    const editForm = document.querySelector('.vtr-edit-form');
+    const editId = document.getElementById('edit-id');
+    const editNumero = document.getElementById('edit-numero_vtr');
+    const editTipo = document.getElementById('edit-tipo');
+    const editModelo = document.getElementById('edit-modelo');
+    const editPlaca = document.getElementById('edit-placa');
+
+    function openEditModal() {
+      editModal.style.display = 'block';
+      editBackdrop.classList.add('open');
+    }
+    function closeEditModal() {
+      editModal.style.display = 'none';
+      editBackdrop.classList.remove('open');
+      editForm?.reset();
+    }
+    editCloseBtn?.addEventListener('click', closeEditModal);
+    editCancelBtn?.addEventListener('click', closeEditModal);
+    editBackdrop?.addEventListener('click', closeEditModal);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeEditModal(); });
+
+    // Abrir modal preenchendo dados da linha
+    document.querySelectorAll('.btn-edit').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const row = e.currentTarget.closest('tr');
+        const idInput = row.querySelector('form.inline-form input[name="id"]');
+        const numero = row.querySelector('td:nth-child(1)')?.textContent?.trim() || '';
+        const tipo = row.querySelector('td:nth-child(2)')?.textContent?.trim() || '';
+        const modelo = row.querySelector('td:nth-child(3)')?.textContent?.trim() || '';
+        const placa = row.querySelector('td:nth-child(4)')?.textContent?.trim() || '';
+
+        editId.value = idInput?.value || '';
+        editNumero.value = numero;
+        editTipo.value = tipo;
+        editModelo.value = modelo;
+        editPlaca.value = placa === '-' ? '' : placa;
+        openEditModal();
+      });
+    });
+
+    // Sanitização simples
+    editNumero?.addEventListener('input', () => {
+      editNumero.value = (editNumero.value || '').replace(/\s+/g, '').toUpperCase();
+    });
+    editPlaca?.addEventListener('input', () => {
+      editPlaca.value = (editPlaca.value || '').replace(/\s+/g, '').toUpperCase();
+    });
+    editModelo?.addEventListener('input', () => {
+      editModelo.value = (editModelo.value || '').trim();
+    });
+
+    // Submissão: garantir trim na saída
+    editForm?.addEventListener('submit', () => {
+      editNumero.value = (editNumero.value || '').trim();
+      editModelo.value = (editModelo.value || '').trim();
+      editPlaca.value = (editPlaca.value || '').trim();
     });
   </script>
 </body>

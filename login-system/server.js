@@ -249,6 +249,21 @@ app.post('/cadastrar-carro', authorizeRoles(['BASE']), (req, res) => {
     });
 });
 
+app.post('/editar-carro', authorizeRoles(['BASE']), (req, res) => {
+    const { id, numero_vtr, tipo, modelo, placa } = req.body;
+
+    if (!id || !numero_vtr || !tipo || !modelo || !placa) {
+        return carregarVtrsComMensagem(req, res, 'Preencha todos os campos.');
+    }
+
+    db.run("UPDATE carros SET numero_vtr = ?, tipo = ?, modelo = ?, placa = ? WHERE id = ?", [numero_vtr, tipo, modelo, placa, id], (err) => {
+        const msg = err?.message.includes("UNIQUE")
+            ? "Número VTR já cadastrado."
+            : err ? "Erro ao atualizar." : "Veículo atualizado com sucesso!";
+        carregarVtrsComMensagem(req, res, msg);
+    });
+});
+
 app.post('/deletar-carro', authorizeRoles(['BASE']), (req, res) => {
     const { id } = req.body;
     db.run("DELETE FROM carros WHERE id = ?", [id], (err) => {
