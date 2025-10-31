@@ -272,6 +272,14 @@ app.post('/deletar-carro', authorizeRoles(['BASE']), (req, res) => {
     });
 });
 
+// Página de gráficos (acesso BASE e Administrador)
+app.get('/graficos', authorizeRoles(['BASE']), (req, res) => {
+  res.render('graficos', {
+    username: req.session.username,
+    role: req.session.role
+  });
+});
+
 app.get('/admin/listar-usuarios', authorizeRoles(['BASE']), (req, res) => {
   db.all("SELECT username, tipo FROM usuarios WHERE username != ?", [ADMIN_USERNAME], (err, rows) => {
     if (err) return res.status(500).json([]);

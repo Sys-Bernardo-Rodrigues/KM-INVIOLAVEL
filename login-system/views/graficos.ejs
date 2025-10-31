@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Gráficos</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="alternate icon" href="/favicon.ico" sizes="any">
+  <meta name="theme-color" content="#111827">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="topnav">
+    <div class="brand"><i class="fas fa-car"></i> KM Control</div>
+    <ul>
+      <li><a href="/dashboard"><i class="fas fa-chart-bar"></i> Dashboard</a></li>
+      <li><a href="/cadastrar-carro"><i class="fas fa-car"></i> Cadastrar Carro</a></li>
+      <li><a href="/historico"><i class="fas fa-clock-rotate-left"></i> Histórico</a></li>
+      <% if (role === 'Administrador') { %>
+        <li><a href="/admin/cadastrar-usuario"><i class="fas fa-user-plus"></i> Cadastrar Usuário</a></li>
+      <% } %>
+      <% if (role === 'Administrador' || role === 'BASE') { %>
+        <li><a href="/graficos" aria-current="page"><i class="fas fa-chart-line"></i> Gráficos</a></li>
+      <% } %>
+      <li><a href="/logout"><i class="fas fa-right-from-bracket"></i> Sair</a></li>
+    </ul>
+  </div>
+
+  <div class="main-content">
+    <div class="page-title"><i class="fas fa-chart-line"></i> Gráficos de Uso</div>
+    <div class="table-card" style="padding: 16px;">
+      <p class="form-help">Visualização inicial. Podemos integrar dados reais conforme necessidade.</p>
+      <canvas id="graficoUso" height="120"></canvas>
+    </div>
+  </div>
+
+  <script>
+    // Exemplo simples de gráfico estático para validação visual
+    const ctx = document.getElementById('graficoUso');
+    if (ctx) {
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
+          datasets: [{
+            label: 'Usos por dia',
+            data: [5, 7, 4, 8, 6, 2, 3],
+            backgroundColor: '#7c3aed'
+          }]
+        },
+        options: {
+          scales: { y: { beginAtZero: true } },
+          plugins: { legend: { display: true } }
+        }
+      });
+    }
+  </script>
+</body>
+</html>

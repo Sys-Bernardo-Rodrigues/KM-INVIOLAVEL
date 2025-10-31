@@ -223,6 +223,9 @@
       <% if (role === 'Administrador') { %>
         <li><a href="/admin/cadastrar-usuario"><i class="fas fa-user-plus"></i> Cadastrar Usuário</a></li>
       <% } %>
+      <% if (role === 'Administrador' || role === 'BASE') { %>
+        <li><a href="/graficos"><i class="fas fa-chart-line"></i> Gráficos</a></li>
+      <% } %>
       <li><a href="/logout"><i class="fas fa-right-from-bracket"></i> Sair</a></li>
     </ul>
   </div>
