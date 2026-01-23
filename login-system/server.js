@@ -1,6 +1,5 @@
 const express = require('express');
 const session = require('express-session');
-const bodyParser = require('body-parser');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const db = require('./database');
@@ -108,6 +107,26 @@ function authorizeRoles(roles = []) {
     };
 }
 
+// Middleware para obter unidade_id da sessão
+function getUnidadeId(req) {
+    // Retorna a primeira unidade do usuário (para compatibilidade)
+    if (req.session.unidades_ids && req.session.unidades_ids.length > 0) {
+        return req.session.unidades_ids[0];
+    }
+    return req.session.unidade_id || null;
+}
+
+function getUnidadeIds(req) {
+    // Retorna todas as unidades do usuário
+    if (req.session.unidades_ids && req.session.unidades_ids.length > 0) {
+        return req.session.unidades_ids;
+    }
+    if (req.session.unidade_id) {
+        return [req.session.unidade_id];
+    }
+    return [];
+}
+
 // Login
 app.get('/', (req, res) => {
     if (req.session.loggedIn) return res.redirect('/dashboard');
@@ -134,16 +153,42 @@ app.post('/login', (req, res) => {
 
         const match = await bcrypt.compare(password, user.password);
         if (match) {
-            req.session.loggedIn = true;
-            req.session.username = username;
-            req.session.role = user.tipo || 'USUARIO';
-            const role = req.session.role;
-            const redirectMap = {
-              'Administrador': '/dashboard',
-              'BASE': '/dashboard',
-              'USUARIO': '/uso-veiculo'
-            };
-            return res.redirect(redirectMap[role] || '/dashboard');
+            // Buscar unidades vinculadas ao usuário (relação muitos-para-muitos)
+            db.all(`
+                SELECT uu.unidade_id, un.nome as unidade_nome
+                FROM usuarios_unidades uu
+                JOIN unidades un ON uu.unidade_id = un.id
+                WHERE uu.usuario_id = ?
+                ORDER BY un.nome ASC
+            `, [user.id], (errUnidades, unidades) => {
+                if (errUnidades) unidades = [];
+                
+                req.session.loggedIn = true;
+                req.session.username = username;
+                req.session.role = user.tipo || 'USUARIO';
+                
+                // Para compatibilidade, usar a primeira unidade se houver
+                if (unidades && unidades.length > 0) {
+                    // Garantir que os IDs sejam números inteiros
+                    const unidadesIdsInt = unidades.map(u => parseInt(u.unidade_id, 10)).filter(id => !isNaN(id));
+                    req.session.unidade_id = unidadesIdsInt[0] || null;
+                    req.session.unidade_nome = unidades[0].unidade_nome;
+                    // Armazenar todas as unidades para uso futuro
+                    req.session.unidades_ids = unidadesIdsInt;
+                } else {
+                    req.session.unidade_id = null;
+                    req.session.unidade_nome = null;
+                    req.session.unidades_ids = [];
+                }
+                
+                const role = req.session.role;
+                const redirectMap = {
+                  'Administrador': '/dashboard',
+                  'BASE': '/dashboard',
+                  'USUARIO': '/uso-veiculo'
+                };
+                return res.redirect(redirectMap[role] || '/dashboard');
+            });
         } else {
             // Redireciona para raiz com indicador de erro
             return res.status(401).redirect('/?erro=1');
@@ -157,10 +202,17 @@ app.get('/logout', (req, res) => {
 
 // Dashboard
 app.get('/dashboard', authorizeRoles(['BASE']), (req, res) => {
-  const sql = `
-  SELECT c.id, c.numero_vtr, c.tipo, c.modelo,
+  const unidadesIds = getUnidadeIds(req);
+  if (unidadesIds.length === 0 && req.session.role !== 'Administrador') {
+    return res.status(403).send('Usuário não possui unidade vinculada.');
+  }
+
+  let sql = `
+  SELECT c.id, c.numero_vtr, c.tipo, c.modelo, c.unidade_id,
+         un.nome AS unidade_nome,
          u.id AS uso_id, u.km_inicial, u.vigilante_inicio, u.abastecimento, u.avarias, u.em_uso
   FROM carros c
+  LEFT JOIN unidades un ON c.unidade_id = un.id
   LEFT JOIN (
     SELECT *
     FROM usos_veiculos
@@ -172,97 +224,213 @@ app.get('/dashboard', authorizeRoles(['BASE']), (req, res) => {
       )
     )
   ) u ON c.id = u.vtr_id
-  ORDER BY c.numero_vtr ASC
+  WHERE 1=1
   `;
+  const params = [];
+  if (unidadesIds.length > 0 && req.session.role !== 'Administrador') {
+    sql += ' AND c.unidade_id IN (' + unidadesIds.map(() => '?').join(',') + ')';
+    params.push(...unidadesIds);
+  }
+  sql += ' ORDER BY c.numero_vtr ASC';
 
-  db.all(sql, [], (err, vtrs) => {
+  db.all(sql, params, (err, vtrs) => {
     if (err) {
       console.error('Erro ao carregar dashboard:', err);
       return res.status(500).send('Erro ao carregar dashboard.');
     }
 
-    res.render('dashboard', {
-      username: req.session.username,
-      role: req.session.role,
-      vtrs
+    // Buscar unidades para o filtro
+    let unidadesQuery = "SELECT * FROM unidades ORDER BY nome ASC";
+    let unidadesParams = [];
+    
+    // Se for BASE, mostrar apenas as unidades do usuário
+    if (req.session.role === 'BASE' && unidadesIds.length > 0) {
+      unidadesQuery = "SELECT * FROM unidades WHERE id IN (" + unidadesIds.map(() => '?').join(',') + ") ORDER BY nome ASC";
+      unidadesParams = unidadesIds;
+    }
+    
+    db.all(unidadesQuery, unidadesParams, (errUnidades, unidades) => {
+      if (errUnidades) unidades = [];
+      res.render('dashboard', {
+        username: req.session.username,
+        role: req.session.role,
+        vtrs,
+        unidades: unidades || []
+      });
     });
   });
 });
 
-// Rota pública de preview do dashboard (sem login), para validar UI
-app.get('/dashboard-preview', (req, res) => {
-  const sql = `
-  SELECT c.id, c.numero_vtr, c.tipo, c.modelo,
-         u.id AS uso_id, u.km_inicial, u.vigilante_inicio, u.abastecimento, u.avarias, u.em_uso
-  FROM carros c
-  LEFT JOIN (
-    SELECT *
-    FROM usos_veiculos
-    WHERE id IN (
-      SELECT id FROM (
-        SELECT id, vtr_id, MAX(COALESCE(data_fim, data_inicio)) AS data_ref
-        FROM usos_veiculos
-        GROUP BY vtr_id
-      )
-    )
-  ) u ON c.id = u.vtr_id
-  ORDER BY c.numero_vtr ASC
-  `;
-
-  db.all(sql, [], (err, vtrs) => {
-    if (err) {
-      console.error('Erro ao carregar dashboard-preview:', err);
-      return res.status(500).send('Erro ao carregar preview.');
-    }
-
-    const username = (req.session && req.session.username) ? req.session.username : 'preview';
-    const role = (req.session && req.session.role) ? req.session.role : 'USUARIO';
-    res.render('dashboard', { username, role, vtrs });
-  });
-});
 
 // Cadastrar carro
 app.get('/cadastrar-carro', authorizeRoles(['BASE']), (req, res) => {
-    db.all("SELECT * FROM carros", (err, rows) => {
-        if (err) return res.send('Erro ao carregar veículos.');
-        res.render('cadastrar-carro', {
-            username: req.session.username,
-            role: req.session.role,
-            mensagem: null,
-            vtrs: rows
+    const unidadesIds = getUnidadeIds(req);
+    
+    // Garantir que os IDs sejam números inteiros
+    const unidadesIdsInt = unidadesIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+    
+    if (unidadesIdsInt.length === 0 && req.session.role !== 'Administrador') {
+        return res.status(403).send('Usuário não possui unidade vinculada.');
+    }
+
+    let sql = "SELECT c.*, u.nome as unidade_nome FROM carros c LEFT JOIN unidades u ON c.unidade_id = u.id";
+    const params = [];
+    if (unidadesIdsInt.length > 0 && req.session.role !== 'Administrador') {
+        sql += " WHERE c.unidade_id IN (" + unidadesIdsInt.map(() => '?').join(',') + ")";
+        params.push(...unidadesIdsInt);
+        // Debug: log para verificar a query
+        console.log('[CADASTRAR-CARRO GET] Usuário:', req.session.username);
+        console.log('[CADASTRAR-CARRO GET] Unidades IDs:', unidadesIdsInt);
+        console.log('[CADASTRAR-CARRO GET] SQL:', sql);
+        console.log('[CADASTRAR-CARRO GET] Params:', params);
+    }
+    sql += " ORDER BY u.nome ASC, c.numero_vtr ASC";
+    
+    db.all(sql, params, (err, rows) => {
+        if (err) {
+            console.error('Erro ao carregar veículos:', err);
+            return res.send('Erro ao carregar veículos.');
+        }
+        
+        if (rows) {
+            console.log('[CADASTRAR-CARRO GET] Veículos encontrados:', rows.length);
+            console.log('[CADASTRAR-CARRO GET] Unidades dos veículos:', [...new Set(rows.map(r => r.unidade_id))]);
+        }
+        
+        // Buscar unidades para o select
+        let unidadesQuery = "SELECT * FROM unidades ORDER BY nome ASC";
+        let unidadesParams = [];
+        
+        // Se não for admin, mostrar apenas as unidades do usuário
+        if (req.session.role !== 'Administrador' && unidadesIdsInt.length > 0) {
+            unidadesQuery = "SELECT * FROM unidades WHERE id IN (" + unidadesIdsInt.map(() => '?').join(',') + ") ORDER BY nome ASC";
+            unidadesParams = unidadesIdsInt;
+        }
+        
+        db.all(unidadesQuery, unidadesParams, (errUnidades, unidades) => {
+            if (errUnidades) {
+                console.error('Erro ao carregar unidades:', errUnidades);
+                unidades = [];
+            }
+            res.render('cadastrar-carro', {
+                username: req.session.username,
+                role: req.session.role,
+                mensagem: null,
+                vtrs: rows,
+                unidades: unidades || [],
+                unidadesIds: unidadesIdsInt
+            });
         });
     });
 });
 
 app.post('/cadastrar-carro', authorizeRoles(['BASE']), (req, res) => {
-    const { numero_vtr, tipo, modelo, placa } = req.body;
+    const { numero_vtr, tipo, modelo, placa, unidade_id } = req.body;
+    const unidadesIds = getUnidadeIds(req);
 
     if (!numero_vtr || !tipo || !modelo || !placa) {
-        return carregarVtrsComMensagem(req, res, 'Preencha todos os campos (incluindo placa).');
+        return carregarVtrsComMensagem(req, res, 'Preencha todos os campos (incluindo placa).', 'error');
     }
 
-    db.run("INSERT INTO carros (numero_vtr, tipo, modelo, placa) VALUES (?, ?, ?, ?)", [numero_vtr, tipo, modelo, placa], (err) => {
-        const msg = err?.message.includes("UNIQUE")
-            ? "Este VTR já está cadastrado."
-            : err ? "Erro ao salvar." : "Veículo cadastrado com sucesso!";
+    let unidadeIdFinal = null;
 
-        carregarVtrsComMensagem(req, res, msg);
-    });
+    if (req.session.role === 'Administrador') {
+        // Administrador pode escolher qualquer unidade ou deixar sem unidade
+        unidadeIdFinal = (unidade_id && unidade_id !== '') ? parseInt(unidade_id, 10) : null;
+    } else {
+        // Usuário comum: se tiver múltiplas unidades, deve escolher uma
+        if (unidadesIds.length === 0) {
+            return carregarVtrsComMensagem(req, res, 'Usuário não possui unidade vinculada.', 'error');
+        } else if (unidadesIds.length === 1) {
+            // Se tiver apenas uma unidade, usar ela automaticamente
+            unidadeIdFinal = unidadesIds[0];
+        } else {
+            // Se tiver múltiplas unidades, deve escolher uma
+            if (!unidade_id || unidade_id === '') {
+                return carregarVtrsComMensagem(req, res, 'Selecione a unidade para o veículo.', 'error');
+            }
+            const unidadeIdEscolhida = parseInt(unidade_id, 10);
+            // Verificar se a unidade escolhida pertence ao usuário
+            if (!unidadesIds.includes(unidadeIdEscolhida)) {
+                return carregarVtrsComMensagem(req, res, 'Unidade selecionada não pertence ao usuário.', 'error');
+            }
+            unidadeIdFinal = unidadeIdEscolhida;
+        }
+    }
+
+    db.run("INSERT INTO carros (numero_vtr, tipo, modelo, placa, unidade_id) VALUES (?, ?, ?, ?, ?)", 
+        [numero_vtr, tipo, modelo, placa, unidadeIdFinal], 
+        (err) => {
+            if (err) {
+                const msg = err.message.includes("UNIQUE")
+                    ? "Este VTR já está cadastrado nesta unidade."
+                    : "Erro ao salvar.";
+                return carregarVtrsComMensagem(req, res, msg, 'error');
+            }
+            carregarVtrsComMensagem(req, res, 'Veículo cadastrado com sucesso!', 'success');
+        }
+    );
 });
 
 app.post('/editar-carro', authorizeRoles(['BASE']), (req, res) => {
-    const { id, numero_vtr, tipo, modelo, placa } = req.body;
+    const { id, numero_vtr, tipo, modelo, placa, unidade_id } = req.body;
+    const unidadesIds = getUnidadeIds(req);
 
     if (!id || !numero_vtr || !tipo || !modelo || !placa) {
-        return carregarVtrsComMensagem(req, res, 'Preencha todos os campos.');
+        return carregarVtrsComMensagem(req, res, 'Preencha todos os campos.', 'error');
     }
 
-    db.run("UPDATE carros SET numero_vtr = ?, tipo = ?, modelo = ?, placa = ? WHERE id = ?", [numero_vtr, tipo, modelo, placa, id], (err) => {
-        const msg = err?.message.includes("UNIQUE")
-            ? "Número VTR já cadastrado."
-            : err ? "Erro ao atualizar." : "Veículo atualizado com sucesso!";
-        carregarVtrsComMensagem(req, res, msg);
-    });
+    // Se não for administrador, verificar se o carro pertence a uma das unidades do usuário
+    if (req.session.role !== 'Administrador') {
+        if (unidadesIds.length === 0) {
+            return carregarVtrsComMensagem(req, res, 'Usuário não possui unidade vinculada.', 'error');
+        }
+
+        // Verificar se o carro pertence a uma das unidades do usuário
+        db.get("SELECT unidade_id FROM carros WHERE id = ?", [id], (err, carro) => {
+            if (err || !carro) {
+                return carregarVtrsComMensagem(req, res, 'Erro ao verificar veículo.', 'error');
+            }
+            
+            // Verificar se a unidade do carro está nas unidades do usuário
+            if (carro.unidade_id && !unidadesIds.includes(carro.unidade_id)) {
+                return carregarVtrsComMensagem(req, res, 'Você não tem permissão para editar este veículo.', 'error');
+            }
+            
+            // Manter a unidade atual (não-admins não podem mudar unidade)
+            const unidadeIdFinal = carro.unidade_id;
+            
+            db.run("UPDATE carros SET numero_vtr = ?, tipo = ?, modelo = ?, placa = ? WHERE id = ?", 
+                [numero_vtr, tipo, modelo, placa, id], 
+                (err) => {
+                    if (err) {
+                        const msg = err.message.includes("UNIQUE")
+                            ? "Número VTR já cadastrado."
+                            : "Erro ao atualizar.";
+                        return carregarVtrsComMensagem(req, res, msg, 'error');
+                    }
+                    carregarVtrsComMensagem(req, res, 'Veículo atualizado com sucesso!', 'success');
+                }
+            );
+        });
+        return;
+    }
+
+    // Administrador pode alterar a unidade
+    const unidadeIdFinal = unidade_id && unidade_id !== '' ? parseInt(unidade_id, 10) : null;
+
+    db.run("UPDATE carros SET numero_vtr = ?, tipo = ?, modelo = ?, placa = ?, unidade_id = ? WHERE id = ?", 
+        [numero_vtr, tipo, modelo, placa, unidadeIdFinal, id], 
+        (err) => {
+            if (err) {
+                const msg = err.message.includes("UNIQUE")
+                    ? "Número VTR já cadastrado."
+                    : "Erro ao atualizar.";
+                return carregarVtrsComMensagem(req, res, msg, 'error');
+            }
+            carregarVtrsComMensagem(req, res, 'Veículo atualizado com sucesso!', 'success');
+        }
+    );
 });
 
 app.post('/deletar-carro', authorizeRoles(['BASE']), (req, res) => {
@@ -327,54 +495,195 @@ app.post('/admin/abrir-uso', authorizeRoles(['BASE']), (req, res) => {
   });
 });
 
-function carregarVtrsComMensagem(req, res, mensagem) {
-    db.all("SELECT * FROM carros", (err, rows) => {
-        if (err) return res.send("Erro ao carregar lista.");
-        res.render('cadastrar-carro', {
-            username: req.session.username,
-            role: req.session.role,
-            mensagem,
-            vtrs: rows
+function carregarVtrsComMensagem(req, res, mensagem, mensagemTipo = 'success') {
+    const unidadesIds = getUnidadeIds(req);
+    
+    // Garantir que os IDs sejam números inteiros
+    const unidadesIdsInt = unidadesIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+    
+    if (unidadesIdsInt.length === 0 && req.session.role !== 'Administrador') {
+        return res.status(403).send('Usuário não possui unidade vinculada.');
+    }
+
+    let sql = "SELECT c.*, u.nome as unidade_nome FROM carros c LEFT JOIN unidades u ON c.unidade_id = u.id";
+    const params = [];
+    if (unidadesIdsInt.length > 0 && req.session.role !== 'Administrador') {
+        sql += " WHERE c.unidade_id IN (" + unidadesIdsInt.map(() => '?').join(',') + ")";
+        params.push(...unidadesIdsInt);
+    }
+    sql += " ORDER BY u.nome ASC, c.numero_vtr ASC";
+    
+    db.all(sql, params, (err, rows) => {
+        if (err) {
+            console.error('Erro ao carregar veículos:', err);
+            return res.send("Erro ao carregar lista.");
+        }
+        
+        // Buscar unidades para o select
+        let unidadesQuery = "SELECT * FROM unidades ORDER BY nome ASC";
+        let unidadesParams = [];
+        
+        // Se não for admin, mostrar apenas as unidades do usuário
+        if (req.session.role !== 'Administrador' && unidadesIdsInt.length > 0) {
+            unidadesQuery = "SELECT * FROM unidades WHERE id IN (" + unidadesIdsInt.map(() => '?').join(',') + ") ORDER BY nome ASC";
+            unidadesParams = unidadesIdsInt;
+        }
+        
+        db.all(unidadesQuery, unidadesParams, (errUnidades, unidades) => {
+            if (errUnidades) {
+                console.error('Erro ao carregar unidades:', errUnidades);
+                unidades = [];
+            }
+            res.render('cadastrar-carro', {
+                username: req.session.username,
+                role: req.session.role,
+                mensagem,
+                mensagemTipo,
+                vtrs: rows,
+                unidades: unidades || [],
+                unidadesIds: unidadesIdsInt
+            });
         });
     });
 }
 
 // Usuários
 app.get('/admin/cadastrar-usuario', requireAdmin, (req, res) => {
-    db.all("SELECT id, username, tipo FROM usuarios WHERE username != ?", [ADMIN_USERNAME], (err, rows) => {
+    // Buscar usuários com suas unidades (múltiplas)
+    db.all(`
+        SELECT DISTINCT u.id, u.username, u.tipo
+        FROM usuarios u
+        WHERE u.username != ?
+        ORDER BY u.username ASC
+    `, [ADMIN_USERNAME], (err, usuarios) => {
         if (err) return res.status(500).send('Erro ao carregar usuários.');
-        res.render('cadastrar-usuario', {
-            usuarios: rows,
-            username: req.session.username,
-            role: req.session.role,
-            mensagem: null,
-            mensagemTipo: null
+        
+        // Para cada usuário, buscar suas unidades
+        db.all("SELECT * FROM unidades ORDER BY nome ASC", [], (errUnidades, todasUnidades) => {
+            if (errUnidades) todasUnidades = [];
+            
+            // Buscar unidades de cada usuário
+            const usuariosComUnidades = [];
+            let processados = 0;
+            
+            if (usuarios.length === 0) {
+                return res.render('cadastrar-usuario', {
+                    usuarios: [],
+                    unidades: todasUnidades || [],
+                    username: req.session.username,
+                    role: req.session.role,
+                    mensagem: null,
+                    mensagemTipo: null
+                });
+            }
+            
+            usuarios.forEach((usuario, index) => {
+                db.all(`
+                    SELECT uu.unidade_id, un.nome as unidade_nome
+                    FROM usuarios_unidades uu
+                    JOIN unidades un ON uu.unidade_id = un.id
+                    WHERE uu.usuario_id = ?
+                    ORDER BY un.nome ASC
+                `, [usuario.id], (errUnidades, unidades) => {
+                    if (errUnidades) unidades = [];
+                    usuario.unidades = unidades || [];
+                    usuariosComUnidades.push(usuario);
+                    
+                    processados++;
+                    if (processados === usuarios.length) {
+                        res.render('cadastrar-usuario', {
+                            usuarios: usuariosComUnidades,
+                            unidades: todasUnidades || [],
+                            username: req.session.username,
+                            role: req.session.role,
+                            mensagem: null,
+                            mensagemTipo: null
+                        });
+                    }
+                });
+            });
         });
     });
 });
 
 app.post('/admin/cadastrar-usuario', requireAdmin, async (req, res) => {
-    const { username, password, tipo } = req.body;
+    const { username, password, tipo, unidades } = req.body;
     if (!username || !password) {
-        return carregarUsuariosComMensagem(req, res, 'Preencha todos os campos.', 'error');
+        return carregarUsuariosComMensagem(req, res, 'Preencha todos os campos obrigatórios.', 'error');
     }
 
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
         const tipoFinal = tipo || 'USUARIO';
-        db.run("INSERT INTO usuarios (username, password, tipo) VALUES (?, ?, ?)", [username, hashedPassword, tipoFinal], function(err) {
-            if (err) {
-                if (err.message.includes("UNIQUE")) {
-                    return carregarUsuariosComMensagem(req, res, 'Usuário já existe!', 'error');
-                } else {
-                    return carregarUsuariosComMensagem(req, res, 'Erro interno ao cadastrar usuário.', 'error');
+        
+        // Inserir usuário
+        db.run("INSERT INTO usuarios (username, password, tipo) VALUES (?, ?, ?)", 
+            [username, hashedPassword, tipoFinal], 
+            function(err) {
+                if (err) {
+                    if (err.message.includes("UNIQUE")) {
+                        return carregarUsuariosComMensagem(req, res, 'Usuário já existe!', 'error');
+                    } else {
+                        return carregarUsuariosComMensagem(req, res, 'Erro interno ao cadastrar usuário.', 'error');
+                    }
                 }
+                
+                const usuarioId = this.lastID;
+                
+                // Inserir unidades (se houver)
+                if (unidades && Array.isArray(unidades) && unidades.length > 0) {
+                    const unidadesIds = unidades.filter(id => id && id !== '');
+                    if (unidadesIds.length > 0) {
+                        const stmt = db.prepare("INSERT INTO usuarios_unidades (usuario_id, unidade_id) VALUES (?, ?)");
+                        unidadesIds.forEach(unidadeId => {
+                            stmt.run([usuarioId, parseInt(unidadeId, 10)]);
+                        });
+                        stmt.finalize();
+                    }
+                }
+                
+                return carregarUsuariosComMensagem(req, res, 'Usuário cadastrado com sucesso!', 'success');
             }
-            return carregarUsuariosComMensagem(req, res, 'Usuário cadastrado com sucesso!', 'success');
-        });
+        );
     } catch (err) {
         return carregarUsuariosComMensagem(req, res, 'Erro interno ao cadastrar usuário.', 'error');
     }
+});
+
+app.post('/admin/editar-usuario', requireAdmin, (req, res) => {
+    const { id, username, tipo, unidades } = req.body;
+    if (!id) {
+        return carregarUsuariosComMensagem(req, res, 'ID do usuário é obrigatório.', 'error');
+    }
+
+    // Verificar se não é o admin principal
+    db.get("SELECT username FROM usuarios WHERE id = ?", [id], (err, user) => {
+        if (err) return carregarUsuariosComMensagem(req, res, 'Erro ao verificar usuário.', 'error');
+        if (user && user.username === ADMIN_USERNAME) {
+            return carregarUsuariosComMensagem(req, res, 'Não é possível editar o administrador principal.', 'error');
+        }
+
+        // Remover todas as unidades atuais do usuário
+        db.run("DELETE FROM usuarios_unidades WHERE usuario_id = ?", [id], (err) => {
+            if (err) {
+                return carregarUsuariosComMensagem(req, res, 'Erro ao atualizar unidades do usuário.', 'error');
+            }
+            
+            // Inserir novas unidades (se houver)
+            if (unidades && Array.isArray(unidades) && unidades.length > 0) {
+                const unidadesIds = unidades.filter(u => u && u !== '');
+                if (unidadesIds.length > 0) {
+                    const stmt = db.prepare("INSERT INTO usuarios_unidades (usuario_id, unidade_id) VALUES (?, ?)");
+                    unidadesIds.forEach(unidadeId => {
+                        stmt.run([id, parseInt(unidadeId, 10)]);
+                    });
+                    stmt.finalize();
+                }
+            }
+            
+            return carregarUsuariosComMensagem(req, res, 'Unidades do usuário atualizadas com sucesso!', 'success');
+        });
+    });
 });
 
 app.post('/admin/deletar-usuario', requireAdmin, (req, res) => {
@@ -388,10 +697,147 @@ app.post('/admin/deletar-usuario', requireAdmin, (req, res) => {
 });
 
 function carregarUsuariosComMensagem(req, res, mensagem, mensagemTipo) {
-    db.all("SELECT id, username, tipo FROM usuarios WHERE username != ?", [ADMIN_USERNAME], (err, rows) => {
+    db.all(`
+        SELECT DISTINCT u.id, u.username, u.tipo
+        FROM usuarios u
+        WHERE u.username != ?
+        ORDER BY u.username ASC
+    `, [ADMIN_USERNAME], (err, usuarios) => {
         if (err) return res.status(500).send('Erro ao carregar usuários.');
-        res.render('cadastrar-usuario', {
-            usuarios: rows,
+        
+        db.all("SELECT * FROM unidades ORDER BY nome ASC", [], (errUnidades, todasUnidades) => {
+            if (errUnidades) todasUnidades = [];
+            
+            const usuariosComUnidades = [];
+            let processados = 0;
+            
+            if (usuarios.length === 0) {
+                return res.render('cadastrar-usuario', {
+                    usuarios: [],
+                    unidades: todasUnidades || [],
+                    username: req.session.username,
+                    role: req.session.role,
+                    mensagem,
+                    mensagemTipo
+                });
+            }
+            
+            usuarios.forEach((usuario) => {
+                db.all(`
+                    SELECT uu.unidade_id, un.nome as unidade_nome
+                    FROM usuarios_unidades uu
+                    JOIN unidades un ON uu.unidade_id = un.id
+                    WHERE uu.usuario_id = ?
+                    ORDER BY un.nome ASC
+                `, [usuario.id], (errUnidades, unidades) => {
+                    if (errUnidades) unidades = [];
+                    usuario.unidades = unidades || [];
+                    usuariosComUnidades.push(usuario);
+                    
+                    processados++;
+                    if (processados === usuarios.length) {
+                        res.render('cadastrar-usuario', {
+                            usuarios: usuariosComUnidades,
+                            unidades: todasUnidades || [],
+                            username: req.session.username,
+                            role: req.session.role,
+                            mensagem,
+                            mensagemTipo
+                        });
+                    }
+                });
+            });
+        });
+    });
+}
+
+
+// Unidades (Empresas)
+app.get('/cadastrar-unidade', requireAdmin, (req, res) => {
+    db.all("SELECT * FROM unidades ORDER BY nome ASC", [], (err, rows) => {
+        if (err) return res.status(500).send('Erro ao carregar unidades.');
+        res.render('cadastrar-unidade', {
+            unidades: rows || [],
+            username: req.session.username,
+            role: req.session.role,
+            mensagem: null,
+            mensagemTipo: null
+        });
+    });
+});
+
+app.post('/cadastrar-unidade', requireAdmin, (req, res) => {
+    const { nome, codigo, endereco, telefone } = req.body;
+    if (!nome) {
+        return carregarUnidadesComMensagem(req, res, 'Nome da unidade é obrigatório.', 'error');
+    }
+
+    db.run("INSERT INTO unidades (nome, codigo, endereco, telefone) VALUES (?, ?, ?, ?)", 
+        [nome, codigo || null, endereco || null, telefone || null], 
+        function(err) {
+            if (err) {
+                if (err.message.includes("UNIQUE")) {
+                    return carregarUnidadesComMensagem(req, res, 'Unidade já existe!', 'error');
+                } else {
+                    return carregarUnidadesComMensagem(req, res, 'Erro interno ao cadastrar unidade.', 'error');
+                }
+            }
+            return carregarUnidadesComMensagem(req, res, 'Unidade cadastrada com sucesso!', 'success');
+        }
+    );
+});
+
+app.post('/editar-unidade', requireAdmin, (req, res) => {
+    const { id, nome, codigo, endereco, telefone } = req.body;
+    if (!id || !nome) {
+        return carregarUnidadesComMensagem(req, res, 'ID e nome são obrigatórios.', 'error');
+    }
+
+    db.run("UPDATE unidades SET nome = ?, codigo = ?, endereco = ?, telefone = ? WHERE id = ?", 
+        [nome, codigo || null, endereco || null, telefone || null, id], 
+        function(err) {
+            if (err) {
+                if (err.message.includes("UNIQUE")) {
+                    return carregarUnidadesComMensagem(req, res, 'Nome ou código já existe!', 'error');
+                } else {
+                    return carregarUnidadesComMensagem(req, res, 'Erro ao atualizar unidade.', 'error');
+                }
+            }
+            return carregarUnidadesComMensagem(req, res, 'Unidade atualizada com sucesso!', 'success');
+        }
+    );
+});
+
+app.post('/deletar-unidade', requireAdmin, (req, res) => {
+    const { id } = req.body;
+    if (!id) return res.status(400).send('ID da unidade é obrigatório.');
+
+    // Verificar se há usuários vinculados (usando usuarios_unidades)
+    db.get("SELECT COUNT(*) as count FROM usuarios_unidades WHERE unidade_id = ?", [id], (err, userCount) => {
+        if (err) return res.status(500).send('Erro ao verificar usuários.');
+        if (userCount.count > 0) {
+            return carregarUnidadesComMensagem(req, res, 'Não é possível deletar unidade com usuários vinculados.', 'error');
+        }
+
+        db.get("SELECT COUNT(*) as count FROM carros WHERE unidade_id = ?", [id], (err, carCount) => {
+            if (err) return res.status(500).send('Erro ao verificar carros.');
+            if (carCount.count > 0) {
+                return carregarUnidadesComMensagem(req, res, 'Não é possível deletar unidade com veículos vinculados.', 'error');
+            }
+
+            db.run("DELETE FROM unidades WHERE id = ?", [id], function(err) {
+                if (err) return res.status(500).send('Erro ao deletar unidade.');
+                res.redirect('/cadastrar-unidade');
+            });
+        });
+    });
+});
+
+function carregarUnidadesComMensagem(req, res, mensagem, mensagemTipo) {
+    db.all("SELECT * FROM unidades ORDER BY nome ASC", [], (err, rows) => {
+        if (err) return res.status(500).send('Erro ao carregar unidades.');
+        res.render('cadastrar-unidade', {
+            unidades: rows || [],
             username: req.session.username,
             role: req.session.role,
             mensagem,
@@ -400,26 +846,24 @@ function carregarUsuariosComMensagem(req, res, mensagem, mensagemTipo) {
     });
 }
 
-// Preview público do cadastro de usuário (apenas para validar UI)
-app.get('/admin/cadastrar-usuario-preview', (req, res) => {
-    db.all("SELECT id, username, tipo FROM usuarios WHERE username != ?", [ADMIN_USERNAME], (err, rows) => {
-        if (err) return res.status(500).send('Erro ao carregar usuários.');
-        const username = (req.session && req.session.username) ? req.session.username : ADMIN_USERNAME;
-        const role = (req.session && req.session.role) ? req.session.role : 'Administrador';
-        res.render('cadastrar-usuario', {
-            usuarios: rows,
-            username,
-            role,
-            mensagem: 'Prévia: popup de cadastro estilizado.',
-            mensagemTipo: 'success'
-        });
-    });
-});
-
 // Uso de veículos (USUARIO)
 app.get('/uso-veiculo', authorizeRoles(['USUARIO']), (req, res) => {
+  const unidadesIds = getUnidadeIds(req);
+  if (unidadesIds.length === 0) {
+    return res.status(403).send('Usuário não possui unidade vinculada.');
+  }
     const username = req.session.username;
-    db.all("SELECT * FROM carros", (err, vtrs) => {
+    
+    // Filtrar carros apenas das unidades do usuário
+    let sqlCarros = "SELECT * FROM carros";
+    const paramsCarros = [];
+    if (unidadesIds.length > 0) {
+        sqlCarros += " WHERE unidade_id IN (" + unidadesIds.map(() => '?').join(',') + ")";
+        paramsCarros.push(...unidadesIds);
+    }
+    sqlCarros += " ORDER BY numero_vtr ASC";
+    
+    db.all(sqlCarros, paramsCarros, (err, vtrs) => {
         if (err) return res.send("Erro ao carregar veículos.");
         db.all(`
             SELECT u.id AS uso_id, u.vtr_id, u.data_inicio, u.km_inicial, c.numero_vtr, c.modelo
@@ -439,18 +883,6 @@ app.get('/uso-veiculo', authorizeRoles(['USUARIO']), (req, res) => {
     });
 });
 
-// Prévia pública do formulário de uso (sem login) para validação visual
-app.get('/uso-veiculo-preview', (req, res) => {
-    db.all("SELECT * FROM carros", (err, vtrs) => {
-        if (err) return res.send("Erro ao carregar veículos.");
-        res.render('formulario-uso', {
-            vtrs,
-            username: req.session?.username || 'usuario.demo',
-            role: req.session?.role || 'USUARIO',
-            usos_ativos: []
-        });
-    });
-});
 
 // Verifica status atual do veículo
 app.get('/status-veiculo/:id', (req, res) => {
@@ -668,56 +1100,6 @@ app.get('/historico/export-pdf', authorizeRoles(['BASE']), (req, res) => {
     });
 });
 
-// Prévia pública da exportação em PDF (sem login) para validação visual
-app.get('/historico/export-pdf-preview', (req, res) => {
-    const q = (req.query.q || '').trim();
-    const from = (req.query.from || '').trim();
-    const to = (req.query.to || '').trim();
-
-    const params = [];
-    let where = '';
-    const clauses = [];
-
-    if (q) {
-      const like = `%${q}%`;
-      clauses.push('(p.numero_vtr_snapshot LIKE ? OR p.modelo_snapshot LIKE ? OR u.vigilante_inicio LIKE ? OR u.vigilante_fim LIKE ? OR c.placa LIKE ?)');
-      params.push(like, like, like, like, like);
-    }
-    if (from) {
-      clauses.push('u.data_inicio >= ?');
-      params.push(`${from}T00:00:00`);
-    }
-    if (to) {
-      clauses.push('COALESCE(u.data_fim, u.data_inicio) <= ?');
-      params.push(`${to}T23:59:59`);
-    }
-    if (clauses.length) {
-      where = 'WHERE ' + clauses.join(' AND ');
-    }
-
-    const sql = `
-        SELECT u.*, 
-               p.numero_vtr_snapshot AS numero_vtr, 
-               p.modelo_snapshot AS modelo, 
-               p.protocolo_codigo,
-               c.placa AS placa
-        FROM usos_veiculos u
-        JOIN protocolos_uso p ON p.id = u.protocolo_id
-        LEFT JOIN carros c ON c.id = u.vtr_id
-        ${where}
-        ORDER BY u.data_inicio DESC
-        LIMIT 100
-    `;
-
-    db.all(sql, params, (err, rows) => {
-        if (err) {
-            console.error('Erro ao gerar PDF (preview):', err);
-            return res.status(500).send('Erro ao gerar PDF (preview).');
-        }
-        const filters = { q, from, to };
-        renderHistoricoPdfToResponse(res, rows, filters);
-    });
-});
 
 // Último KM
 app.get('/ultimo-km/:vtrId', (req, res) => {

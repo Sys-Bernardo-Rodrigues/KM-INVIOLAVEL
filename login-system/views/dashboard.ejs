@@ -55,21 +55,67 @@
       justify-content: space-between;
       gap: 12px;
       margin: 10px 0 18px;
+      flex-wrap: wrap;
     }
     .toolbar .title-group { display: flex; flex-direction: column; gap: 4px; }
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      min-width: 300px;
+      height: 34px;
+    }
     .toolbar .search {
-      display: flex; align-items: center; gap: 8px;
+      display: flex; 
+      align-items: center; 
+      gap: 8px;
       background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 8px 12px;
+      padding: 0 12px;
       box-shadow: var(--shadow);
       min-width: clamp(220px, 30vw, 360px);
+      flex: 1;
+      height: 34px;
+      box-sizing: border-box;
     }
-    .toolbar .search i { color: #6b7280; }
+    .toolbar .search i { 
+      color: #6b7280; 
+      flex-shrink: 0;
+    }
     .toolbar .search input {
-      border: none; outline: none; width: 100%; background: transparent;
-      font-size: 14px; color: var(--text);
+      border: none; 
+      outline: none; 
+      width: 100%; 
+      background: transparent;
+      font-size: 14px; 
+      color: var(--text);
+      height: 100%;
+      padding: 0;
+      margin: 0;
+      line-height: 34px;
+    }
+    .toolbar .filter-select {
+      height: 34px;
+      line-height: 34px;
+      box-sizing: border-box;
+      padding: 0 32px 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card-bg);
+      font-size: 13px;
+      cursor: pointer;
+      min-width: 180px;
+      max-width: 200px;
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background-image: url('data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%236b7280\' d=\'M6 9L1 4h10z\'/%3E%3C/svg%3E');
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      margin: 0;
+      vertical-align: middle;
     }
     .toolbar .filters { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
     .filter-chip { cursor: pointer; }
@@ -222,6 +268,7 @@
       <li><a href="/historico"><i class="fas fa-clock-rotate-left"></i> Histórico</a></li>
       <% if (role === 'Administrador') { %>
         <li><a href="/admin/cadastrar-usuario"><i class="fas fa-user-plus"></i> Cadastrar Usuário</a></li>
+        <li><a href="/cadastrar-unidade"><i class="fas fa-building"></i> Cadastrar Unidade</a></li>
       <% } %>
       <% if (role === 'Administrador' || role === 'BASE') { %>
         <li><a href="/graficos"><i class="fas fa-chart-line"></i> Gráficos</a></li>
@@ -232,9 +279,19 @@
 
   <div class="main-content">
     <div class="toolbar">
-      <div class="search">
-        <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
-        <input id="dashboard-search" type="text" placeholder="Buscar VTR ou modelo..." aria-label="Buscar VTR ou modelo">
+      <div class="toolbar-left">
+        <div class="search">
+          <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+          <input id="dashboard-search" type="text" placeholder="Buscar VTR ou modelo..." aria-label="Buscar VTR ou modelo">
+        </div>
+        <% if ((role === 'Administrador' || role === 'BASE') && typeof unidades !== 'undefined' && unidades && unidades.length > 0) { %>
+          <select id="filter-unidade" class="filter-select">
+            <option value="">Todas as unidades</option>
+            <% unidades.forEach(unidade => { %>
+              <option value="<%= unidade.id %>"><%= unidade.nome %></option>
+            <% }); %>
+          </select>
+        <% } %>
       </div>
       <div class="filters" aria-label="Filtros rápidos">
         <div class="chip filter-chip warn" data-filter="abastecimento:sim" role="button" aria-pressed="false" tabindex="0">
@@ -297,6 +354,7 @@
             <th>VTR</th>
             <th>Modelo</th>
             <th>Tipo</th>
+            <th>Unidade</th>
             <th>Status</th>
             <th>Motorista</th>
             <th>Abastecimento</th>
@@ -306,7 +364,7 @@
         </thead>
         <tbody>
           <% vtrs.forEach(vtr => { %>
-            <tr class="<%= vtr.em_uso ? 'in-use' : 'free' %>" data-vtr="<%= vtr.numero_vtr %> <%= vtr.modelo %>" data-tipo="<%= (vtr.tipo || '').toLowerCase() %>" data-estado="<%= vtr.em_uso ? 'em_uso' : 'livre' %>" data-abastecimento="<%= vtr.abastecimento === 'Sim' ? 'sim' : 'nao' %>" data-avarias="<%= vtr.avarias === 'Sim' ? 'sim' : 'nao' %>"
+            <tr class="<%= vtr.em_uso ? 'in-use' : 'free' %>" data-vtr="<%= vtr.numero_vtr %> <%= vtr.modelo %>" data-tipo="<%= (vtr.tipo || '').toLowerCase() %>" data-estado="<%= vtr.em_uso ? 'em_uso' : 'livre' %>" data-abastecimento="<%= vtr.abastecimento === 'Sim' ? 'sim' : 'nao' %>" data-avarias="<%= vtr.avarias === 'Sim' ? 'sim' : 'nao' %>" data-unidade-id="<%= vtr.unidade_id || '' %>"
                 data-vtr-id="<%= vtr.id %>" data-uso-id="<%= vtr.uso_id || '' %>" data-km-inicial="<%= vtr.km_inicial || '' %>" data-motorista="<%= vtr.vigilante_inicio || '' %>" data-vtr-nome="VTR - <%= vtr.numero_vtr %>">
               <td>
                 <div class="cell-title">
@@ -320,6 +378,17 @@
                   <i class="fas <%= vtr.tipo === 'Carro' ? 'fa-car' : 'fa-motorcycle' %>" aria-hidden="true"></i>
                   <%= vtr.tipo %>
                 </div>
+              </td>
+              <td>
+                <% if (vtr.unidade_nome) { %>
+                  <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: #f0fdf4; color: #16a34a; border-radius: 12px; font-size: 12px; font-weight: 600; border: 1px solid #bbf7d0;">
+                    <i class="fas fa-building"></i> <%= vtr.unidade_nome %>
+                  </span>
+                <% } else { %>
+                  <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: #f3f4f6; color: #6b7280; border-radius: 12px; font-size: 12px; font-weight: 600; opacity: 0.7;">
+                    <i class="fas fa-building"></i> Sem unidade
+                  </span>
+                <% } %>
               </td>
               <td>
                 <div class="status-chip <%= vtr.em_uso ? 'busy' : 'ok' %>">
@@ -449,6 +518,7 @@
   <script>
     // Filtro de busca + filtro por tipo (Carro/Moto)
     const searchInput = document.getElementById('dashboard-search');
+    const filterUnidadeSelect = document.getElementById('filter-unidade');
     let activeType = null;
     let activeState = null;
     let activeFuel = null; // 'sim' para veículos que precisam abastecer
@@ -456,23 +526,34 @@
 
     function applyTableFilter() {
       const term = (searchInput?.value || '').toLowerCase();
+      const unidadeId = filterUnidadeSelect?.value || '';
       document.querySelectorAll('.vtr-table tbody tr').forEach(row => {
         const data = (row.getAttribute('data-vtr') || '').toLowerCase();
         const tipo = (row.getAttribute('data-tipo') || '').toLowerCase();
         const estado = (row.getAttribute('data-estado') || '').toLowerCase();
         const fuel = (row.getAttribute('data-abastecimento') || '').toLowerCase();
         const damage = (row.getAttribute('data-avarias') || '').toLowerCase();
+        const rowUnidadeId = row.getAttribute('data-unidade-id') || '';
         const matchTerm = data.includes(term);
         const matchType = !activeType || tipo === activeType;
         const matchState = !activeState || estado === activeState;
         const matchFuel = !activeFuel || fuel === activeFuel;
         const matchDamage = !activeDamage || damage === activeDamage;
-        row.style.display = (matchTerm && matchType && matchState && matchFuel && matchDamage) ? '' : 'none';
+        const matchUnidade = !unidadeId || rowUnidadeId === unidadeId;
+        row.style.display = (matchTerm && matchType && matchState && matchFuel && matchDamage && matchUnidade) ? '' : 'none';
       });
     }
 
     if (searchInput) {
       searchInput.addEventListener('input', applyTableFilter);
+    }
+
+    if (filterUnidadeSelect) {
+      filterUnidadeSelect.addEventListener('change', applyTableFilter);
+    }
+
+    if (filterUnidadeSelect) {
+      filterUnidadeSelect.addEventListener('change', applyTableFilter);
     }
 
     let activeMetric = null;

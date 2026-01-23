@@ -1,4 +1,3 @@
-<!-- cadastrar-carro.ejs -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -10,6 +9,609 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --muted: #6b7280;
+      --text: #111827;
+      --border: #e5e7eb;
+      --shadow: 0 4px 16px rgba(17, 24, 39, 0.08);
+      --success: #16a34a;
+      --danger: #dc2626;
+      --primary: #7c3aed;
+      --warning: #ca8a04;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .main-content {
+      padding: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .page-header {
+      margin-bottom: 24px;
+    }
+
+    .page-header h1 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin: 0 0 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .page-header p {
+      color: var(--muted);
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(17, 24, 39, 0.12);
+    }
+
+    .stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .stat-icon.total { background: #eef2ff; color: #6366f1; }
+    .stat-icon.carro { background: #dbeafe; color: #2563eb; }
+    .stat-icon.moto { background: #f3e8ff; color: #9333ea; }
+
+    .stat-content {
+      flex: 1;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      min-width: 300px;
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+      max-width: 500px;
+      min-width: 300px;
+    }
+
+    .search-box i {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 0 14px 0 40px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      background: var(--card-bg);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      height: 40px;
+      line-height: 40px;
+      box-sizing: border-box;
+      margin: 0;
+      vertical-align: middle;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+    }
+
+    .filter-select {
+      padding: 0 36px 0 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card-bg);
+      font-size: 14px;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      min-width: 180px;
+      max-width: 200px;
+      height: 40px;
+      line-height: 40px;
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      box-sizing: border-box;
+      margin: 0;
+    }
+
+    .filter-select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+    }
+
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: none;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #6d28d9;
+      transform: translateY(-1px);
+    }
+
+    .btn-clear {
+      padding: 10px 16px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card-bg);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .btn-clear:hover {
+      background: #f3f4f6;
+      border-color: var(--muted);
+      transform: translateY(-1px);
+    }
+
+    .popup-msg {
+      padding: 16px 20px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: var(--shadow);
+      animation: slideIn 0.3s ease;
+    }
+
+    .popup-msg.success {
+      background: #f0fdf4;
+      color: #16a34a;
+      border: 1px solid #bbf7d0;
+    }
+
+    .popup-msg.error {
+      background: #fef2f2;
+      color: #dc2626;
+      border: 1px solid #fecaca;
+    }
+
+    .popup-msg.hidden {
+      display: none;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .table-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .user-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .user-table thead {
+      background: var(--bg);
+    }
+
+    .user-table th {
+      padding: 16px;
+      text-align: left;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .user-table td {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+
+    .user-table tbody tr {
+      transition: background-color 0.2s;
+    }
+
+    .user-table tbody tr:hover {
+      background: var(--bg);
+    }
+
+    .user-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .btn-icon {
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: none;
+    }
+
+    .btn-edit {
+      background: #eef2ff;
+      color: #6366f1;
+    }
+
+    .btn-edit:hover {
+      background: #e0e7ff;
+      transform: translateY(-1px);
+    }
+
+    .btn-delete {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+
+    .btn-delete:hover {
+      background: #fecaca;
+      transform: translateY(-1px);
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #b91c1c;
+    }
+
+    .inline-form {
+      display: inline;
+      margin: 0;
+    }
+
+    .km-info, .status-info {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .km-info {
+      color: var(--primary);
+    }
+
+    .status-info {
+      color: var(--muted);
+    }
+
+    .badge-unidade {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: #f0fdf4;
+      color: #16a34a;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid #bbf7d0;
+    }
+
+    .badge-no-unidade {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: #f3f4f6;
+      color: #6b7280;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      opacity: 0.7;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .modal-backdrop.open {
+      display: block;
+      opacity: 1;
+    }
+
+    .modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.95);
+      background: var(--card-bg);
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      z-index: 1001;
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      opacity: 0;
+      transition: all 0.3s;
+    }
+
+    .modal.open {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .modal header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal header .title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .modal header .close-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .modal header .close-btn:hover {
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .modal .content {
+      padding: 24px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      background: var(--card-bg);
+      color: var(--text) !important;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      box-sizing: border-box;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="number"],
+    .form-group input[type="email"],
+    .form-group input[type="password"] {
+      color: #111827 !important;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+      color: var(--text);
+    }
+
+    .form-group input::placeholder,
+    .form-group input::-webkit-input-placeholder,
+    .form-group input::-moz-placeholder,
+    .form-group input:-ms-input-placeholder {
+      color: var(--muted);
+      opacity: 0.7;
+    }
+
+    .modal .actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .empty-state i {
+      font-size: 64px;
+      opacity: 0.3;
+      margin-bottom: 16px;
+    }
+
+    .empty-state p {
+      font-size: 16px;
+      margin: 0;
+    }
+
+    @media (max-width: 768px) {
+      .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .toolbar-left {
+        flex-direction: column;
+        min-width: auto;
+        gap: 10px;
+      }
+
+      .search-box {
+        max-width: 100%;
+      }
+
+      .filter-select {
+        min-width: 100%;
+        width: 100%;
+      }
+
+      .toolbar-right {
+        flex-direction: column;
+        width: 100%;
+        gap: 10px;
+      }
+
+      .toolbar-right .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .user-table {
+        font-size: 12px;
+      }
+
+      .user-table th,
+      .user-table td {
+        padding: 12px 8px;
+      }
+    }
+  </style>
 </head>
 <body>
   <div class="topnav">
@@ -20,6 +622,7 @@
       <li><a href="/historico"><i class="fas fa-clock-rotate-left"></i> Histórico</a></li>
       <% if (role === 'Administrador') { %>
         <li><a href="/admin/cadastrar-usuario"><i class="fas fa-user-plus"></i> Cadastrar Usuário</a></li>
+        <li><a href="/cadastrar-unidade"><i class="fas fa-building"></i> Cadastrar Unidade</a></li>
       <% } %>
       <% if (role === 'Administrador' || role === 'BASE') { %>
         <li><a href="/graficos"><i class="fas fa-chart-line"></i> Gráficos</a></li>
@@ -27,21 +630,86 @@
       <li><a href="/logout"><i class="fas fa-right-from-bracket"></i> Sair</a></li>
     </ul>
   </div>
+
   <div class="main-content">
-    <div class="toolbar">
-      <div class="page-title"><i class="fas fa-car"></i> Cadastro de Veículo</div>
-      <button id="open-create-vtr" class="btn btn-primary"><i class="fas fa-plus"></i> Cadastrar Veículo</button>
+    <div class="page-header">
+      <h1><i class="fas fa-car"></i> Gerenciar Veículos</h1>
+      <p>Cadastre, edite e gerencie os veículos do sistema</p>
     </div>
+
+    <% 
+      let totalVtrs = vtrs ? vtrs.length : 0;
+      let totalCarros = vtrs ? vtrs.filter(v => v.tipo === 'Carro').length : 0;
+      let totalMotos = vtrs ? vtrs.filter(v => v.tipo === 'Moto').length : 0;
+    %>
+
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-icon total"><i class="fas fa-car"></i></div>
+        <div class="stat-content">
+          <div class="stat-value"><%= totalVtrs %></div>
+          <div class="stat-label">Total de Veículos</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon carro"><i class="fas fa-car-side"></i></div>
+        <div class="stat-content">
+          <div class="stat-value"><%= totalCarros %></div>
+          <div class="stat-label">Carros</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon moto"><i class="fas fa-motorcycle"></i></div>
+        <div class="stat-content">
+          <div class="stat-value"><%= totalMotos %></div>
+          <div class="stat-label">Motos</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="search-box">
+          <i class="fas fa-magnifying-glass"></i>
+          <input id="vtr-search" type="text" placeholder="Buscar veículo..." aria-label="Buscar veículo">
+        </div>
+        <% if (role === 'Administrador') { %>
+          <select id="filter-unidade" class="filter-select">
+            <option value="">Todas as unidades</option>
+            <% if (typeof unidades !== 'undefined' && unidades) { %>
+              <% unidades.forEach(unidade => { %>
+                <option value="<%= unidade.id %>"><%= unidade.nome %></option>
+              <% }); %>
+            <% } %>
+          </select>
+        <% } %>
+      </div>
+      <div class="toolbar-right">
+        <button id="open-create-vtr" class="btn btn-primary">
+          <i class="fas fa-plus"></i> Cadastrar Veículo
+        </button>
+      </div>
+    </div>
+
     <% if (mensagem) { %>
-      <p class="mensagem"><%= mensagem %></p>
+      <div class="popup-msg <%= mensagemTipo || 'success' %>">
+        <i class="fas fa-info-circle"></i>
+        <span><%= mensagem %></span>
+      </div>
+      <script>
+        setTimeout(() => {
+          document.querySelector('.popup-msg')?.classList.add('hidden');
+        }, 2600);
+      </script>
     <% } %>
+
     <!-- Modal de cadastro de veículo -->
     <div id="create-vtr-backdrop" class="modal-backdrop" aria-hidden="true"></div>
     <div id="create-vtr-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="create-vtr-title" style="display:none;">
       <header>
         <div id="create-vtr-title" class="title"><i class="fas fa-car"></i> Novo Veículo</div>
         <button id="close-create-vtr" class="close-btn" aria-label="Fechar">
-          <i class="fas fa-times"></i>
+          <i class="fas fa-xmark"></i>
         </button>
       </header>
       <div class="content">
@@ -66,69 +734,121 @@
             <label for="placa">Placa</label>
             <input type="text" name="placa" id="placa" placeholder="Ex.: ABC1234 ou ABC1D23" required>
           </div>
-          <button type="submit">Cadastrar Veículo</button>
+          <% if (role === 'Administrador') { %>
+            <div class="form-group">
+              <label for="unidade_id">Unidade</label>
+              <select name="unidade_id" id="unidade_id">
+                <option value="">-- Sem unidade --</option>
+                <% if (typeof unidades !== 'undefined' && unidades) { %>
+                  <% unidades.forEach(unidade => { %>
+                    <option value="<%= unidade.id %>"><%= unidade.nome %></option>
+                  <% }); %>
+                <% } %>
+              </select>
+            </div>
+          <% } else if (typeof unidades !== 'undefined' && unidades && unidades.length > 1) { %>
+            <div class="form-group">
+              <label for="unidade_id">Unidade *</label>
+              <select name="unidade_id" id="unidade_id" required>
+                <option value="">Selecione a unidade</option>
+                <% unidades.forEach(unidade => { %>
+                  <option value="<%= unidade.id %>"><%= unidade.nome %></option>
+                <% }) %>
+              </select>
+            </div>
+          <% } else if (typeof unidades !== 'undefined' && unidades && unidades.length === 1) { %>
+            <input type="hidden" name="unidade_id" value="<%= unidades[0].id %>">
+          <% } %>
+          <div class="actions">
+            <button type="button" id="cancel-create-vtr" class="btn">Cancelar</button>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Cadastrar</button>
+          </div>
         </form>
       </div>
     </div>
 
     <% if (vtrs && vtrs.length > 0) { %>
-      <div class="section-title"><i class="fas fa-list"></i> Veículos Cadastrados</div>
       <div class="table-card">
-      <table class="user-table">
-        <thead>
-          <tr>
-            <th>Número VTR</th>
-            <th>Tipo</th>
-            <th>Modelo</th>
-            <th>Placa</th>
-            <th>KM Atual</th>
-            <th>Status</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% vtrs.forEach(vtr => { %>
+        <table class="user-table">
+          <thead>
             <tr>
-              <td><%= vtr.numero_vtr %></td>
-              <td><%= vtr.tipo %></td>
-              <td><%= vtr.modelo %></td>
-              <td><%= vtr.placa || '-' %></td>
-              <td>
-                <span class="km-info" data-vtr-id="<%= vtr.id %>">
-                  <i class="fas fa-gauge"></i> Carregando...
-                </span>
-              </td>
-              <td>
-                <span class="status-info" data-vtr-id="<%= vtr.id %>">
-                  <i class="fas fa-circle-notch fa-spin"></i> Verificando...
-                </span>
-              </td>
-              <td>
-                <form action="/deletar-carro" method="POST" class="inline-form">
-                  <input type="hidden" name="id" value="<%= vtr.id %>">
-                  <button type="submit" class="btn-delete btn-icon" aria-label="Excluir" title="Excluir"><i class="fas fa-trash"></i></button>
-                </form>
-                <button type="button" class="btn-edit btn-icon" aria-label="Editar" title="Editar"><i class="fas fa-pen"></i></button>
-              </td>
+              <th>Número VTR</th>
+              <th>Tipo</th>
+              <th>Modelo</th>
+              <th>Placa</th>
+              <th>Unidade</th>
+              <th>KM Atual</th>
+              <th>Status</th>
+              <th>Ações</th>
             </tr>
-          <% }) %>
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            <% vtrs.forEach(vtr => { %>
+              <tr class="vtr-row" 
+                  data-id="<%= vtr.id %>"
+                  data-unidade-id="<%= vtr.unidade_id || '' %>"
+                  data-numero="<%= (vtr.numero_vtr || '').toLowerCase() %>"
+                  data-modelo="<%= (vtr.modelo || '').toLowerCase() %>"
+                  data-placa="<%= (vtr.placa || '').toLowerCase() %>"
+                  data-tipo="<%= vtr.tipo || '' %>">
+                <td><%= vtr.numero_vtr %></td>
+                <td><%= vtr.tipo %></td>
+                <td><%= vtr.modelo %></td>
+                <td><%= vtr.placa || '-' %></td>
+                <td>
+                  <% if (vtr.unidade_nome) { %>
+                    <span class="badge-unidade">
+                      <i class="fas fa-building"></i> <%= vtr.unidade_nome %>
+                    </span>
+                  <% } else { %>
+                    <span class="badge-no-unidade">
+                      <i class="fas fa-building"></i> Sem unidade
+                    </span>
+                  <% } %>
+                </td>
+                <td>
+                  <span class="km-info" data-vtr-id="<%= vtr.id %>">
+                    <i class="fas fa-gauge"></i> Carregando...
+                  </span>
+                </td>
+                <td>
+                  <span class="status-info" data-vtr-id="<%= vtr.id %>">
+                    <i class="fas fa-circle-notch fa-spin"></i> Verificando...
+                  </span>
+                </td>
+                <td>
+                  <div style="display: flex; gap: 8px;">
+                    <button type="button" class="btn-edit btn-icon" aria-label="Editar" title="Editar">
+                      <i class="fas fa-pen"></i>
+                    </button>
+                    <form action="/deletar-carro" method="POST" class="inline-form">
+                      <input type="hidden" name="id" value="<%= vtr.id %>">
+                      <button type="button" class="btn-delete btn-icon" aria-label="Excluir" title="Excluir">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
       </div>
+
       <!-- Modal de confirmação de exclusão -->
       <div id="confirm-delete-backdrop" class="modal-backdrop" aria-hidden="true"></div>
       <div id="confirm-delete-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-delete-title" style="display:none;">
         <header>
           <div id="confirm-delete-title" class="title"><i class="fas fa-trash"></i> Excluir VTR</div>
           <button id="close-confirm-delete" class="close-btn" aria-label="Fechar">
-            <i class="fas fa-times"></i>
+            <i class="fas fa-xmark"></i>
           </button>
         </header>
         <div class="content">
           <p id="confirm-delete-message" style="margin-bottom:16px;">Tem certeza que deseja excluir este VTR?</p>
-          <div style="display:flex; gap:10px; justify-content:flex-end;">
-            <button id="cancel-delete" class="btn btn-icon" aria-label="Cancelar" title="Cancelar"><i class="fas fa-times"></i></button>
-            <button id="confirm-delete" class="btn btn-danger btn-icon" aria-label="Excluir" title="Excluir"><i class="fas fa-trash"></i></button>
+          <div class="actions">
+            <button id="cancel-delete" class="btn">Cancelar</button>
+            <button id="confirm-delete" class="btn btn-danger"><i class="fas fa-trash"></i> Excluir</button>
           </div>
         </div>
       </div>
@@ -139,7 +859,7 @@
         <header>
           <div id="edit-vtr-title" class="title"><i class="fas fa-pen"></i> Editar Veículo</div>
           <button id="close-edit-vtr" class="close-btn" aria-label="Fechar">
-            <i class="fas fa-times"></i>
+            <i class="fas fa-xmark"></i>
           </button>
         </header>
         <div class="content">
@@ -165,81 +885,118 @@
               <label for="edit-placa">Placa</label>
               <input type="text" name="placa" id="edit-placa" placeholder="Ex.: ABC1234 ou ABC1D23" required>
             </div>
-            <div style="display:flex; gap:10px; justify-content:flex-end;">
-              <button type="button" id="cancel-edit-vtr" class="btn btn-icon" aria-label="Cancelar" title="Cancelar"><i class="fas fa-times"></i></button>
-              <button type="submit" class="btn btn-primary btn-icon" aria-label="Salvar" title="Salvar"><i class="fas fa-floppy-disk"></i></button>
+            <% if (role === 'Administrador') { %>
+              <div class="form-group">
+                <label for="edit-unidade_id">Unidade</label>
+                <select name="unidade_id" id="edit-unidade_id">
+                  <option value="">-- Sem unidade --</option>
+                  <% if (typeof unidades !== 'undefined' && unidades) { %>
+                    <% unidades.forEach(unidade => { %>
+                      <option value="<%= unidade.id %>"><%= unidade.nome %></option>
+                    <% }); %>
+                  <% } %>
+                </select>
+              </div>
+            <% } %>
+            <div class="actions">
+              <button type="button" id="cancel-edit-vtr" class="btn">Cancelar</button>
+              <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Salvar</button>
             </div>
           </form>
         </div>
       </div>
-
-
+    <% } else { %>
+      <div class="table-card">
+        <div class="empty-state">
+          <i class="fas fa-car"></i>
+          <p>Nenhum veículo cadastrado ainda.</p>
+          <p style="font-size: 14px; margin-top: 8px;">Clique em "Cadastrar Veículo" para começar.</p>
+        </div>
+      </div>
     <% } %>
   </div>
+
   <script>
     // Controle do modal de cadastro
     const openBtn = document.getElementById('open-create-vtr');
     const modal = document.getElementById('create-vtr-modal');
     const backdrop = document.getElementById('create-vtr-backdrop');
     const closeBtn = document.getElementById('close-create-vtr');
+    const cancelBtn = document.getElementById('cancel-create-vtr');
 
     function openModal() {
       modal.style.display = 'block';
       backdrop.classList.add('open');
+      setTimeout(() => modal.classList.add('open'), 10);
     }
+    
     function closeModal() {
-      modal.style.display = 'none';
+      modal.classList.remove('open');
       backdrop.classList.remove('open');
+      setTimeout(() => modal.style.display = 'none', 300);
     }
+    
     openBtn?.addEventListener('click', openModal);
     closeBtn?.addEventListener('click', closeModal);
+    cancelBtn?.addEventListener('click', closeModal);
     backdrop?.addEventListener('click', closeModal);
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 
-    // KM atual removido da visualização no cadastro de carros
-
-    // Confirmação de exclusão
-    const confirmModal = document.getElementById('confirm-delete-modal');
-    const confirmBackdrop = document.getElementById('confirm-delete-backdrop');
-    const confirmCloseBtn = document.getElementById('close-confirm-delete');
-    const confirmMsg = document.getElementById('confirm-delete-message');
-    const confirmBtn = document.getElementById('confirm-delete');
-    const cancelBtn = document.getElementById('cancel-delete');
-    let pendingDeleteForm = null;
-
-    function openConfirm(message, form) {
-      pendingDeleteForm = form;
-      confirmMsg.textContent = message || 'Tem certeza que deseja excluir este VTR?';
-      confirmModal.style.display = 'block';
-      confirmBackdrop.classList.add('open');
-    }
-    function closeConfirm() {
-      confirmModal.style.display = 'none';
-      confirmBackdrop.classList.remove('open');
-      pendingDeleteForm = null;
-    }
-
-    // Intercepta botões de excluir da lista
-    document.querySelectorAll('.inline-form .btn-delete').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const form = e.currentTarget.closest('form');
-        const row = form.closest('tr');
-        const numero = row?.querySelector('td:nth-child(1)')?.textContent?.trim();
-        openConfirm(`Tem certeza que deseja excluir o VTR ${numero}?`, form);
+    // Busca e filtros
+    const vtrSearch = document.getElementById('vtr-search');
+    const filterUnidade = document.getElementById('filter-unidade');
+    
+    function applyFilters() {
+      const searchTerm = (vtrSearch?.value || '').toLowerCase();
+      const unidadeId = filterUnidade?.value || '';
+      const rows = document.querySelectorAll('.vtr-row');
+      let visibleCount = 0;
+      
+      rows.forEach(row => {
+        const rowUnidadeId = row.getAttribute('data-unidade-id') || '';
+        const numero = row.getAttribute('data-numero') || '';
+        const modelo = row.getAttribute('data-modelo') || '';
+        const placa = row.getAttribute('data-placa') || '';
+        
+        const matchUnidade = !unidadeId || rowUnidadeId === unidadeId;
+        const matchSearch = !searchTerm || 
+          numero.includes(searchTerm) || 
+          modelo.includes(searchTerm) || 
+          placa.includes(searchTerm);
+        
+        if (matchUnidade && matchSearch) {
+          row.style.display = '';
+          visibleCount++;
+        } else {
+          row.style.display = 'none';
+        }
       });
-    });
-
-    confirmBtn.addEventListener('click', () => {
-      if (pendingDeleteForm) pendingDeleteForm.submit();
-      closeConfirm();
-    });
-    cancelBtn.addEventListener('click', closeConfirm);
-    confirmCloseBtn.addEventListener('click', closeConfirm);
-    confirmBackdrop.addEventListener('click', closeConfirm);
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeConfirm(); });
-
-    // Editar KM removido
+      
+      // Mostrar mensagem se não houver resultados
+      const tbody = document.querySelector('.user-table tbody');
+      let emptyState = tbody?.querySelector('.empty-state-filter');
+      
+      if (visibleCount === 0 && rows.length > 0) {
+        if (!emptyState) {
+          emptyState = document.createElement('tr');
+          emptyState.className = 'empty-state-filter';
+          emptyState.innerHTML = `
+            <td colspan="8" style="text-align: center; padding: 40px; color: var(--muted);">
+              <i class="fas fa-search" style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;"></i>
+              <p style="margin: 0;">Nenhum veículo encontrado com os filtros aplicados.</p>
+            </td>
+          `;
+          tbody.appendChild(emptyState);
+        }
+      } else if (emptyState) {
+        emptyState.remove();
+      }
+    }
+    
+    vtrSearch?.addEventListener('input', applyFilters);
+    if (filterUnidade) {
+      filterUnidade.addEventListener('change', applyFilters);
+    }
 
     // Preencher KM Atual e Status de cada VTR
     document.querySelectorAll('.km-info').forEach(async (el) => {
@@ -261,13 +1018,59 @@
         const uso = await res.json();
         if (uso && uso.em_uso === 1) {
           el.innerHTML = `<i class="fas fa-person-walking"></i> Em uso`;
+          el.style.color = 'var(--warning)';
         } else {
           el.innerHTML = `<i class="fas fa-circle-check"></i> Disponível`;
+          el.style.color = 'var(--success)';
         }
       } catch (err) {
         el.innerHTML = `<i class="fas fa-triangle-exclamation"></i> N/D`;
       }
     });
+
+    // Confirmação de exclusão
+    const confirmModal = document.getElementById('confirm-delete-modal');
+    const confirmBackdrop = document.getElementById('confirm-delete-backdrop');
+    const confirmCloseBtn = document.getElementById('close-confirm-delete');
+    const confirmMsg = document.getElementById('confirm-delete-message');
+    const confirmBtn = document.getElementById('confirm-delete');
+    const cancelDeleteBtn = document.getElementById('cancel-delete');
+    let pendingDeleteForm = null;
+
+    function openConfirm(message, form) {
+      pendingDeleteForm = form;
+      confirmMsg.textContent = message || 'Tem certeza que deseja excluir este VTR?';
+      confirmModal.style.display = 'block';
+      confirmBackdrop.classList.add('open');
+      setTimeout(() => confirmModal.classList.add('open'), 10);
+    }
+    
+    function closeConfirm() {
+      confirmModal.classList.remove('open');
+      confirmBackdrop.classList.remove('open');
+      setTimeout(() => confirmModal.style.display = 'none', 300);
+      pendingDeleteForm = null;
+    }
+
+    // Intercepta botões de excluir da lista
+    document.querySelectorAll('.inline-form .btn-delete').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const form = e.currentTarget.closest('form');
+        const row = form.closest('tr');
+        const numero = row?.querySelector('td:nth-child(1)')?.textContent?.trim();
+        openConfirm(`Tem certeza que deseja excluir o VTR ${numero}?`, form);
+      });
+    });
+
+    confirmBtn?.addEventListener('click', () => {
+      if (pendingDeleteForm) pendingDeleteForm.submit();
+      closeConfirm();
+    });
+    cancelDeleteBtn?.addEventListener('click', closeConfirm);
+    confirmCloseBtn?.addEventListener('click', closeConfirm);
+    confirmBackdrop?.addEventListener('click', closeConfirm);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeConfirm(); });
 
     // Controle do modal de edição
     const editModal = document.getElementById('edit-vtr-modal');
@@ -280,16 +1083,21 @@
     const editTipo = document.getElementById('edit-tipo');
     const editModelo = document.getElementById('edit-modelo');
     const editPlaca = document.getElementById('edit-placa');
+    const editUnidade = document.getElementById('edit-unidade_id');
 
     function openEditModal() {
       editModal.style.display = 'block';
       editBackdrop.classList.add('open');
+      setTimeout(() => editModal.classList.add('open'), 10);
     }
+    
     function closeEditModal() {
-      editModal.style.display = 'none';
+      editModal.classList.remove('open');
       editBackdrop.classList.remove('open');
+      setTimeout(() => editModal.style.display = 'none', 300);
       editForm?.reset();
     }
+    
     editCloseBtn?.addEventListener('click', closeEditModal);
     editCancelBtn?.addEventListener('click', closeEditModal);
     editBackdrop?.addEventListener('click', closeEditModal);
@@ -298,18 +1106,59 @@
     // Abrir modal preenchendo dados da linha
     document.querySelectorAll('.btn-edit').forEach(btn => {
       btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
         const row = e.currentTarget.closest('tr');
-        const idInput = row.querySelector('form.inline-form input[name="id"]');
-        const numero = row.querySelector('td:nth-child(1)')?.textContent?.trim() || '';
-        const tipo = row.querySelector('td:nth-child(2)')?.textContent?.trim() || '';
-        const modelo = row.querySelector('td:nth-child(3)')?.textContent?.trim() || '';
-        const placa = row.querySelector('td:nth-child(4)')?.textContent?.trim() || '';
+        if (!row) {
+          console.error('Linha da tabela não encontrada');
+          return;
+        }
+        
+        // Pegar ID do atributo data-id da linha ou do form de deletar
+        let id = row.getAttribute('data-id') || '';
+        if (!id) {
+          const deleteForm = row.querySelector('form.inline-form');
+          const idInput = deleteForm?.querySelector('input[name="id"]');
+          id = idInput?.value || '';
+        }
+        
+        const unidadeId = row.getAttribute('data-unidade-id') || '';
 
-        editId.value = idInput?.value || '';
+        // Pegar dados diretamente das células da tabela (valores reais)
+        const cells = row.querySelectorAll('td');
+        if (cells.length < 4) {
+          console.error('Número insuficiente de células na tabela');
+          return;
+        }
+        
+        const numero = cells[0]?.textContent?.trim() || '';
+        const tipo = cells[1]?.textContent?.trim() || '';
+        const modelo = cells[2]?.textContent?.trim() || '';
+        let placa = cells[3]?.textContent?.trim() || '';
+        
+        // Limpar placa se for '-'
+        if (placa === '-') {
+          placa = '';
+        }
+
+        // Verificar se os elementos do formulário existem
+        if (!editId || !editNumero || !editTipo || !editModelo || !editPlaca) {
+          console.error('Elementos do formulário de edição não encontrados');
+          return;
+        }
+
+        // Preencher o formulário com os valores reais
+        editId.value = id;
         editNumero.value = numero;
         editTipo.value = tipo;
         editModelo.value = modelo;
-        editPlaca.value = placa === '-' ? '' : placa;
+        editPlaca.value = placa;
+        
+        if (editUnidade) {
+          editUnidade.value = unidadeId || '';
+        }
+        
         openEditModal();
       });
     });

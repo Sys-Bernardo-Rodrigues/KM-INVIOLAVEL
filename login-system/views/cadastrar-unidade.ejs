@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Cadastrar Unidade</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="alternate icon" href="/favicon.ico" sizes="any">
+  <meta name="theme-color" content="#111827">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --muted: #6b7280;
+      --text: #111827;
+      --border: #e5e7eb;
+      --shadow: 0 4px 16px rgba(17, 24, 39, 0.08);
+      --success: #16a34a;
+      --danger: #dc2626;
+      --primary: #7c3aed;
+      --warning: #ca8a04;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .main-content {
+      padding: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .page-header {
+      margin-bottom: 24px;
+    }
+
+    .page-header h1 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin: 0 0 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .page-header p {
+      color: var(--muted);
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(17, 24, 39, 0.12);
+    }
+
+    .stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .stat-icon.total { background: #eef2ff; color: #6366f1; }
+
+    .stat-content {
+      flex: 1;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      min-width: 300px;
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+      max-width: 500px;
+      min-width: 300px;
+    }
+
+    .search-box i {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 0 14px 0 40px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      background: var(--card-bg);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      height: 40px;
+      line-height: 40px;
+      box-sizing: border-box;
+      margin: 0;
+      vertical-align: middle;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+    }
+
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .unidades-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    .unidade-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .unidade-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), #a855f7);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .unidade-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(17, 24, 39, 0.12);
+      border-color: var(--primary);
+    }
+
+    .unidade-card:hover::before {
+      opacity: 1;
+    }
+
+    .unidade-card.hidden {
+      display: none;
+    }
+
+    .unidade-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .unidade-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary), #a855f7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .unidade-info {
+      flex: 1;
+      margin-left: 16px;
+    }
+
+    .unidade-name {
+      font-size: 18px;
+      font-weight: 700;
+      margin: 0 0 4px 0;
+      color: var(--text);
+    }
+
+    .unidade-id {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .unidade-details {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 16px 0;
+    }
+
+    .unidade-detail-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .unidade-detail-item i {
+      width: 16px;
+      color: var(--primary);
+    }
+
+    .unidade-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .unidade-actions .btn {
+      flex: 1;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: none;
+    }
+
+    .btn-edit {
+      background: #eef2ff;
+      color: #6366f1;
+    }
+
+    .btn-edit:hover {
+      background: #e0e7ff;
+      transform: translateY(-1px);
+    }
+
+    .btn-delete {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+
+    .btn-delete:hover {
+      background: #fecaca;
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #6d28d9;
+      transform: translateY(-1px);
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: none;
+      text-decoration: none;
+    }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+
+    .empty-state i {
+      font-size: 64px;
+      color: var(--muted);
+      opacity: 0.3;
+      margin-bottom: 16px;
+    }
+
+    .empty-state p {
+      color: var(--muted);
+      font-size: 16px;
+      margin: 0;
+    }
+
+    .popup-msg {
+      padding: 16px 20px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: var(--shadow);
+      animation: slideIn 0.3s ease;
+    }
+
+    .popup-msg.success {
+      background: #f0fdf4;
+      color: #16a34a;
+      border: 1px solid #bbf7d0;
+    }
+
+    .popup-msg.error {
+      background: #fef2f2;
+      color: #dc2626;
+      border: 1px solid #fecaca;
+    }
+
+    .popup-msg.hidden {
+      display: none;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .modal-backdrop.open {
+      display: block;
+      opacity: 1;
+    }
+
+    .modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.95);
+      background: var(--card-bg);
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      z-index: 1001;
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      opacity: 0;
+      transition: all 0.3s;
+    }
+
+    .modal.open {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .modal header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal header .title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .modal header .close-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .modal header .close-btn:hover {
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .modal .content {
+      padding: 24px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      background: var(--card-bg);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      box-sizing: border-box;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+    }
+
+    .modal .actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .inline-form {
+      display: inline;
+      margin: 0;
+    }
+
+    @media (max-width: 768px) {
+      .unidades-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .toolbar-left {
+        flex-direction: column;
+        min-width: auto;
+        gap: 10px;
+      }
+
+      .search-box {
+        max-width: 100%;
+      }
+
+      .toolbar-right {
+        flex-direction: column;
+        width: 100%;
+        gap: 10px;
+      }
+
+      .toolbar-right .btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="topnav">
+    <div class="brand"><i class="fas fa-car"></i> KM Control</div>
+    <ul>
+      <li><a href="/dashboard"><i class="fas fa-chart-bar"></i> Dashboard</a></li>
+      <li><a href="/cadastrar-carro"><i class="fas fa-car"></i> Cadastrar Carro</a></li>
+      <li><a href="/historico"><i class="fas fa-clock-rotate-left"></i> Histórico</a></li>
+      <% if (role === 'Administrador') { %>
+        <li><a href="/admin/cadastrar-usuario"><i class="fas fa-user-plus"></i> Cadastrar Usuário</a></li>
+        <li><a href="/cadastrar-unidade"><i class="fas fa-building"></i> Cadastrar Unidade</a></li>
+      <% } %>
+      <% if (role === 'Administrador' || role === 'BASE') { %>
+        <li><a href="/graficos"><i class="fas fa-chart-line"></i> Gráficos</a></li>
+      <% } %>
+      <li><a href="/logout"><i class="fas fa-right-from-bracket"></i> Sair</a></li>
+    </ul>
+  </div>
+
+  <div class="main-content">
+    <div class="page-header">
+      <h1><i class="fas fa-building"></i> Gerenciar Unidades</h1>
+      <p>Cadastre, edite e gerencie as unidades do sistema</p>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-icon total"><i class="fas fa-building"></i></div>
+        <div class="stat-content">
+          <div class="stat-value"><%= unidades ? unidades.length : 0 %></div>
+          <div class="stat-label">Total de Unidades</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="toolbar" aria-label="Ferramentas de busca">
+      <div class="toolbar-left">
+        <div class="search-box">
+          <i class="fas fa-magnifying-glass"></i>
+          <input id="unidade-search" type="text" placeholder="Buscar unidade..." aria-label="Buscar unidade">
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <button class="btn btn-primary" id="open-unidade-modal">
+          <i class="fas fa-building"></i> Nova Unidade
+        </button>
+      </div>
+    </div>
+
+    <% if (mensagem) { %>
+      <div id="unidade-toast" class="popup-msg <%= mensagemTipo || 'success' %>">
+        <i class="fas fa-info-circle" aria-hidden="true"></i>
+        <span><%= mensagem %></span>
+      </div>
+      <script>
+        setTimeout(() => {
+          document.getElementById('unidade-toast')?.classList.add('hidden');
+        }, 2600);
+      </script>
+    <% } %>
+
+    <!-- Modal de cadastro/edição de unidade -->
+    <div id="unidade-modal-backdrop" class="modal-backdrop" aria-hidden="true"></div>
+    <div id="unidade-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="unidade-modal-title" style="display:none">
+      <header>
+        <div class="title"><i class="fas fa-building"></i> <span id="unidade-modal-title">Cadastrar Unidade</span></div>
+        <button id="close-unidade-modal" class="close-btn" aria-label="Fechar"><i class="fas fa-xmark"></i></button>
+      </header>
+      <div class="content">
+        <form id="unidade-form" action="/cadastrar-unidade" method="POST">
+          <input type="hidden" name="id" id="unidade-id">
+          <div class="form-group">
+            <label for="nome">Nome da Unidade *</label>
+            <input type="text" name="nome" id="nome" required placeholder="Ex: Unidade Centro">
+          </div>
+          <div class="form-group">
+            <label for="codigo">Código</label>
+            <input type="text" name="codigo" id="codigo" placeholder="Ex: UNI-001">
+          </div>
+          <div class="form-group">
+            <label for="endereco">Endereço</label>
+            <input type="text" name="endereco" id="endereco" placeholder="Rua, número, bairro">
+          </div>
+          <div class="form-group">
+            <label for="telefone">Telefone</label>
+            <input type="text" name="telefone" id="telefone" placeholder="(00) 00000-0000">
+          </div>
+          <div class="actions">
+            <button type="button" class="btn" id="cancel-unidade-modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="unidades-grid" id="unidades-list">
+      <% if (unidades && unidades.length > 0) { %>
+        <% unidades.forEach(unidade => { %>
+          <div class="unidade-card"
+               data-nome="<%= (unidade.nome || '').toLowerCase() %>"
+               data-codigo="<%= (unidade.codigo || '').toLowerCase() %>">
+            <div class="unidade-header">
+              <div class="unidade-icon">
+                <i class="fas fa-building"></i>
+              </div>
+              <div class="unidade-info">
+                <h3 class="unidade-name"><%= unidade.nome %></h3>
+                <p class="unidade-id">ID: <%= unidade.id || '-' %></p>
+              </div>
+            </div>
+            <div class="unidade-details">
+              <% if (unidade.codigo) { %>
+                <div class="unidade-detail-item">
+                  <i class="fas fa-hashtag"></i>
+                  <span><%= unidade.codigo %></span>
+                </div>
+              <% } %>
+              <% if (unidade.endereco) { %>
+                <div class="unidade-detail-item">
+                  <i class="fas fa-map-marker-alt"></i>
+                  <span><%= unidade.endereco %></span>
+                </div>
+              <% } %>
+              <% if (unidade.telefone) { %>
+                <div class="unidade-detail-item">
+                  <i class="fas fa-phone"></i>
+                  <span><%= unidade.telefone %></span>
+                </div>
+              <% } %>
+            </div>
+            <div class="unidade-actions">
+              <button type="button" class="btn btn-edit" onclick="editarUnidade(<%= JSON.stringify(unidade).replace(/"/g, '&quot;') %>)">
+                <i class="fas fa-edit"></i> Editar
+              </button>
+              <form action="/deletar-unidade" method="POST" class="inline-form" style="flex: 1; margin: 0;">
+                <input type="hidden" name="id" value="<%= unidade.id %>">
+                <button type="submit" class="btn btn-delete" onclick="return confirm('Tem certeza que deseja apagar a unidade <%= unidade.nome %>?')">
+                  <i class="fas fa-trash"></i> Apagar
+                </button>
+              </form>
+            </div>
+          </div>
+        <% }) %>
+      <% } else { %>
+        <div class="empty-state">
+          <i class="fas fa-building"></i>
+          <p>Nenhuma unidade cadastrada ainda.</p>
+          <p style="font-size: 14px; margin-top: 8px;">Clique em "Nova Unidade" para começar.</p>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <script>
+    // Busca de unidades
+    const unidadeSearch = document.getElementById('unidade-search');
+    const unidadesList = document.getElementById('unidades-list');
+    
+    function applyUnidadeFilter() {
+      const term = (unidadeSearch?.value || '').toLowerCase();
+      const cards = unidadesList?.querySelectorAll('.unidade-card');
+      
+      if (!cards || cards.length === 0) return;
+      
+      let visibleCount = 0;
+      cards.forEach(card => {
+        const nome = card.getAttribute('data-nome') || '';
+        const codigo = card.getAttribute('data-codigo') || '';
+        const matches = nome.includes(term) || codigo.includes(term);
+        card.style.display = matches ? '' : 'none';
+        if (matches) visibleCount++;
+      });
+      
+      // Mostrar/ocultar empty state
+      const emptyState = unidadesList?.querySelector('.empty-state');
+      if (emptyState) {
+        emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
+      }
+    }
+    
+    unidadeSearch?.addEventListener('input', applyUnidadeFilter);
+
+    // Modal: abrir/fechar
+    (function() {
+      const backdrop = document.getElementById('unidade-modal-backdrop');
+      const modal = document.getElementById('unidade-modal');
+      const openBtn = document.getElementById('open-unidade-modal');
+      const closeBtn = document.getElementById('close-unidade-modal');
+      const cancelBtn = document.getElementById('cancel-unidade-modal');
+      const form = document.getElementById('unidade-form');
+      const nomeInput = document.getElementById('nome');
+      const titleSpan = document.getElementById('unidade-modal-title');
+
+      function openModal(unidade = null) {
+        if (unidade) {
+          // Modo edição
+          document.getElementById('unidade-id').value = unidade.id;
+          document.getElementById('nome').value = unidade.nome || '';
+          document.getElementById('codigo').value = unidade.codigo || '';
+          document.getElementById('endereco').value = unidade.endereco || '';
+          document.getElementById('telefone').value = unidade.telefone || '';
+          titleSpan.textContent = 'Editar Unidade';
+          form.action = '/editar-unidade';
+        } else {
+          // Modo cadastro
+          form.reset();
+          document.getElementById('unidade-id').value = '';
+          titleSpan.textContent = 'Cadastrar Unidade';
+          form.action = '/cadastrar-unidade';
+        }
+        backdrop.classList.add('open');
+        modal.style.display = 'block';
+        modal.classList.add('open');
+        setTimeout(() => nomeInput?.focus(), 10);
+      }
+      
+      function closeModal() {
+        backdrop.classList.remove('open');
+        modal.classList.remove('open');
+        modal.style.display = 'none';
+      }
+
+      openBtn?.addEventListener('click', () => openModal());
+      closeBtn?.addEventListener('click', closeModal);
+      cancelBtn?.addEventListener('click', closeModal);
+      backdrop?.addEventListener('click', closeModal);
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
+      });
+
+      // Expor função global para editar
+      window.editarUnidade = function(unidade) {
+        openModal(unidade);
+      };
+    })();
+  </script>
+</body>
+</html>

@@ -2,199 +2,873 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Uso de Veículo</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Uso de Veículo - KM Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="alternate icon" href="/favicon.ico" sizes="any">
-  <meta name="theme-color" content="#111827">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#7c3aed">
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    /* Uso de Veículo - Lista de usos ativos */
-    .active-uses { margin-top: 16px; }
-    .active-uses h3 {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 16px; margin: 16px 0 10px; color: var(--text);
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --muted: #6b7280;
+      --text: #111827;
+      --border: #e5e7eb;
+      --shadow: 0 4px 16px rgba(17, 24, 39, 0.08);
+      --shadow-lg: 0 10px 40px rgba(17, 24, 39, 0.12);
+      --success: #16a34a;
+      --danger: #dc2626;
+      --primary: #7c3aed;
+      --primary-hover: #6d28d9;
+      --warning: #ca8a04;
+      --info: #3b82f6;
+      --gradient-primary: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+      --gradient-success: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+      --gradient-danger: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
     }
-    .use-cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.6;
+    }
+
+    .topnav {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 0;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+      backdrop-filter: blur(10px);
+    }
+
+    .topnav-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+      gap: 20px;
+    }
+
+    .topnav .brand {
+      font-size: 20px;
+      font-weight: 800;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: -0.5px;
+    }
+
+    .topnav .brand i {
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-size: 22px;
+    }
+
+    .topnav ul {
+      display: flex;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .topnav ul li {
+      margin: 0;
+    }
+
+    .topnav ul li a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 10px;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .topnav ul li a:hover {
+      background: #f3f4f6;
+      color: var(--primary);
+    }
+
+    .topnav ul li a.logout {
+      color: var(--danger);
+      background: #fef2f2;
+    }
+
+    .topnav ul li a.logout:hover {
+      background: #fee2e2;
+      color: #991b1b;
+      transform: translateY(-1px);
+    }
+
+    .topnav ul li a i {
+      font-size: 14px;
+    }
+
+    .main-content {
+      padding: 32px 20px;
+      max-width: 900px;
+      margin: 0 auto;
+      animation: fadeIn 0.4s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .page-header {
+      margin-bottom: 32px;
+      text-align: center;
+      padding: 24px 0;
+    }
+
+    .page-header h1 {
+      font-size: clamp(28px, 4vw, 36px);
+      font-weight: 800;
+      margin: 0 0 12px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      color: var(--text);
+      letter-spacing: -0.5px;
+    }
+
+    .page-header h1 i {
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-size: 36px;
+    }
+
+    .page-header p {
+      color: var(--muted);
+      font-size: 16px;
+      margin: 0;
+      font-weight: 400;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 28px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      transition: all 0.3s ease;
+      animation: slideUp 0.4s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-2px);
+    }
+
+    .card-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 0 0 20px 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text);
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .card-title i {
+      color: var(--primary);
+      font-size: 22px;
+      width: 28px;
+      text-align: center;
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: 0.2px;
+    }
+
+    .form-group select,
+    .form-group input {
+      width: 100%;
+      padding: 14px 18px;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      font-size: 16px;
+      background: var(--card-bg);
+      transition: all 0.2s ease;
+      -webkit-appearance: none;
+      appearance: none;
+      font-family: inherit;
+    }
+
+    .form-group select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 18px center;
+      padding-right: 50px;
+      cursor: pointer;
+    }
+
+    .form-group select:focus,
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
+      transform: translateY(-1px);
+    }
+
+    .form-group input:read-only {
+      background: #f9fafb;
+      cursor: not-allowed;
+      color: var(--muted);
+    }
+
+    .form-help {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+    }
+
+    .form-help i {
+      color: var(--info);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 16px 24px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 8px;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      font-size: 14px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-primary {
+      background: var(--gradient-primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(124, 58, 237, 0.35);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-success {
+      background: var(--gradient-success);
+      color: white;
+    }
+
+    .btn-success:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(22, 163, 74, 0.35);
+    }
+
+    .btn-danger {
+      background: var(--gradient-danger);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(220, 38, 38, 0.35);
+    }
+
+    .alert {
+      padding: 16px 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .alert.info {
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      color: #1e40af;
+      border: 2px solid #bfdbfe;
+    }
+
+    .alert.info i {
+      color: var(--info);
+      font-size: 18px;
+    }
+
+    .alert.warning {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      color: #92400e;
+      border: 2px solid #fbbf24;
+    }
+
+    .alert.warning i {
+      color: var(--warning);
+      font-size: 18px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .usos-ativos {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .uso-card {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      border: 2px solid #fbbf24;
+      border-radius: 16px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      animation: pulse 2s ease-in-out infinite;
+      cursor: pointer;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        box-shadow: 0 4px 16px rgba(251, 191, 36, 0.2);
+      }
+      50% {
+        box-shadow: 0 4px 24px rgba(251, 191, 36, 0.4);
+      }
+    }
+
+    .uso-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 32px rgba(251, 191, 36, 0.3);
+      border-color: #f59e0b;
+    }
+
+    .uso-card::after {
+      content: '👆 Clique para encerrar';
+      position: absolute;
+      bottom: 12px;
+      right: 16px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #92400e;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 6px 12px;
+      border-radius: 20px;
+      opacity: 0;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .uso-card:hover::after {
+      opacity: 1;
+      transform: translateY(-2px);
+    }
+
+    .uso-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--warning);
+    }
+
+    .uso-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .uso-vtr {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
       gap: 12px;
     }
-    .use-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
-      box-shadow: var(--shadow);
+
+    .uso-vtr i {
+      color: var(--warning);
+      font-size: 22px;
     }
-    .use-header {
-      display: flex; align-items: center; gap: 8px;
-      font-weight: 600; color: var(--text);
+
+    .uso-badge {
+      padding: 8px 16px;
+      background: var(--warning);
+      color: white;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 2px 8px rgba(202, 138, 4, 0.3);
     }
-    .use-header i { color: #374151; }
-    .badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700;
-      border: 1px solid var(--border); color: var(--text); margin-left: auto;
+
+    .uso-details {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
     }
-    .badge.in-use { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
-    .use-body {
-      display: flex; flex-direction: column; gap: 6px; margin-top: 8px;
-      color: var(--muted); font-size: 13px;
+
+    .uso-detail-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      color: var(--text);
+      font-weight: 500;
     }
-    .use-body .model, .use-body .start, .use-body .km {
-      display: flex; align-items: center; gap: 6px;
+
+    .uso-detail-item i {
+      width: 24px;
+      color: var(--muted);
+      font-size: 16px;
+      text-align: center;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .empty-state i {
+      font-size: 64px;
+      margin-bottom: 16px;
+      opacity: 0.2;
+      color: var(--primary);
+    }
+
+    .empty-state p {
+      font-size: 16px;
+      margin: 0;
+      font-weight: 500;
+    }
+
+    .popup-msg {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: 90%;
+      width: auto;
+      min-width: 300px;
+      background: var(--gradient-success);
+      color: white;
+      padding: 18px 24px;
+      border-radius: 14px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+      z-index: 2000;
+      text-align: center;
+      font-weight: 600;
+      font-size: 15px;
+      animation: slideUpPopup 0.4s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    @keyframes slideUpPopup {
+      from {
+        transform: translateX(-50%) translateY(100px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .popup-msg i {
+      font-size: 20px;
+    }
+
+    .section-divider {
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin: 32px 0;
+    }
+
+    @media (max-width: 768px) {
+      .topnav-container {
+        flex-direction: column;
+        padding: 12px 16px;
+      }
+
+      .topnav ul {
+        flex-wrap: wrap;
+        justify-content: center;
+        width: 100%;
+      }
+
+      .topnav ul li a {
+        font-size: 13px;
+        padding: 8px 12px;
+      }
+
+      .main-content {
+        padding: 20px 16px;
+      }
+
+      .page-header h1 {
+        font-size: 24px;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .card {
+        padding: 20px;
+        border-radius: 16px;
+      }
+
+      .uso-details {
+        grid-template-columns: 1fr;
+      }
+
+      .popup-msg {
+        left: 16px;
+        right: 16px;
+        transform: none;
+        max-width: none;
+        min-width: auto;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .topnav .brand {
+        font-size: 18px;
+      }
+
+      .topnav ul li a span {
+        display: none;
+      }
+
+      .topnav ul li a {
+        padding: 10px;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        justify-content: center;
+      }
+
+      .topnav ul li a.logout span {
+        display: none;
+      }
     }
   </style>
 </head>
-
-
 <body>
   <div class="topnav">
-    <div class="brand"><i class="fas fa-car"></i> KM Control</div>
-    <ul>
-      <% if (role !== 'USUARIO') { %>
-        <li><a href="/dashboard"><i class="fas fa-chart-bar"></i> Dashboard</a></li>
-        <li><a href="/cadastrar-carro"><i class="fas fa-car"></i> Cadastrar Carro</a></li>
-        <li><a href="/historico"><i class="fas fa-clock-rotate-left"></i> Histórico</a></li>
-        <% if (role === 'Administrador') { %>
-          <li><a href="/admin/cadastrar-usuario"><i class="fas fa-user-plus"></i> Cadastrar Usuário</a></li>
-        <% } %>
-      <% } %>
-      <li><a href="/logout"><i class="fas fa-right-from-bracket"></i> Sair</a></li>
-    </ul>
+    <div class="topnav-container">
+      <div class="brand">
+        <i class="fas fa-car"></i>
+        <span>KM Control</span>
+      </div>
+      <ul>
+        <li><a href="/logout" class="logout"><i class="fas fa-right-from-bracket"></i><span>Sair</span></a></li>
+      </ul>
+    </div>
   </div>
 
   <div class="main-content">
-    <div class="page-title"><i class="fas fa-car" aria-hidden="true"></i> Registro de Uso de Veículo</div>
-    <div class="form-card" aria-label="Registro de Uso de Veículo">
+    <div class="page-header">
+      <h1>
+        <i class="fas fa-car-side"></i>
+        <span>Uso de Veículo</span>
+      </h1>
+      <p>Gerencie abertura e encerramento de uso dos veículos</p>
+    </div>
 
-      <div class="vtr-form">
-        <div class="form-group">
-          <label for="vtr_id">Selecione o Veículo</label>
-          <select id="vtr_id" name="vtr_id" required>
-            <option value="">-- Escolha um VTR --</option>
-            <% vtrs.forEach(vtr => { %>
-              <option value="<%= vtr.id %>"><%= vtr.numero_vtr %> - <%= vtr.modelo %></option>
-            <% }) %>
-          </select>
-        </div>
-        <div id="uso_info" class="alert info hidden" role="alert" aria-live="assertive">
-          <i class="fas fa-circle-info" aria-hidden="true"></i>
-          <span id="uso_info_text"></span>
-        </div>
-      </div>
-
-      <div class="vtr-form" aria-label="Meus veículos em uso">
-        <h3><i class="fas fa-person-walking" aria-hidden="true"></i> Meus Veículos em Uso</h3>
-        <% if (usos_ativos && usos_ativos.length > 0) { %>
-          <div class="use-cards">
-            <% usos_ativos.forEach(uso => { %>
-              <div class="use-card">
-                <div class="use-header">
-                  <i class="fas fa-car" aria-hidden="true"></i>
+    <!-- Meus Veículos em Uso -->
+    <% if (usos_ativos && usos_ativos.length > 0) { %>
+      <div class="card">
+        <h2 class="card-title">
+          <i class="fas fa-clock"></i>
+          <span>Meus Veículos em Uso</span>
+        </h2>
+        <div class="usos-ativos">
+          <% usos_ativos.forEach(uso => { %>
+            <div class="uso-card" data-vtr-id="<%= uso.vtr_id %>" title="Clique para encerrar o uso deste veículo">
+              <div class="uso-header">
+                <div class="uso-vtr">
+                  <i class="fas fa-car"></i>
                   <span><%= uso.numero_vtr %></span>
-                  <span class="badge in-use">Em uso</span>
                 </div>
-                <div class="use-body">
-                  <div class="model"><i class="fas fa-tag" aria-hidden="true"></i> <%= uso.modelo %></div>
-                  <div class="start"><i class="fas fa-clock" aria-hidden="true"></i> Iniciado: <%= uso.data_inicio %></div>
-                  <div class="km"><i class="fas fa-road" aria-hidden="true"></i> KM Inicial: <%= uso.km_inicial %></div>
+                <span class="uso-badge">Em Uso</span>
+              </div>
+              <div class="uso-details">
+                <div class="uso-detail-item">
+                  <i class="fas fa-tag"></i>
+                  <span><strong>Modelo:</strong> <%= uso.modelo %></span>
+                </div>
+                <div class="uso-detail-item">
+                  <i class="fas fa-calendar"></i>
+                  <span><strong>Iniciado:</strong> <%= new Date(uso.data_inicio).toLocaleString('pt-BR') %></span>
+                </div>
+                <div class="uso-detail-item">
+                  <i class="fas fa-tachometer-alt"></i>
+                  <span><strong>KM Inicial:</strong> <%= uso.km_inicial %> km</span>
                 </div>
               </div>
-            <% }) %>
+            </div>
+          <% }) %>
+        </div>
+      </div>
+    <% } %>
+
+    <!-- Seleção de Veículo -->
+    <div class="card">
+      <h2 class="card-title">
+        <i class="fas fa-list"></i>
+        <span>Selecionar Veículo</span>
+      </h2>
+      <div class="form-group">
+        <label for="vtr_id">
+          <i class="fas fa-car"></i> Escolha o veículo
+        </label>
+        <select id="vtr_id" name="vtr_id" required>
+          <option value="">-- Selecione um veículo --</option>
+          <% vtrs.forEach(vtr => { %>
+            <option value="<%= vtr.id %>" data-modelo="<%= vtr.modelo %>" data-tipo="<%= vtr.tipo %>">
+              <%= vtr.numero_vtr %> - <%= vtr.modelo %> (<%= vtr.tipo %>)
+            </option>
+          <% }) %>
+        </select>
+      </div>
+      <div id="uso_info" class="alert info hidden">
+        <i class="fas fa-info-circle"></i>
+        <span id="uso_info_text"></span>
+      </div>
+    </div>
+
+    <!-- Formulário de Abertura -->
+    <div id="card-abertura" class="card hidden">
+      <h2 class="card-title">
+        <i class="fas fa-door-open"></i>
+        <span>Abrir Uso</span>
+      </h2>
+      <form id="form-abertura">
+        <input type="hidden" name="vtr_id" id="abertura_vtr_id">
+        <div class="form-group">
+          <label for="km_inicial">
+            <i class="fas fa-tachometer-alt"></i> KM Inicial
+          </label>
+          <input type="number" name="km_inicial" id="km_inicial" required min="0" step="1" inputmode="numeric" placeholder="Digite o KM inicial">
+          <div id="km_hint" class="form-help hidden">
+            <i class="fas fa-info-circle"></i>
+            <span></span>
           </div>
-        <% } else { %>
-          <div class="form-help">Você não possui veículos em uso no momento.</div>
-        <% } %>
-      </div>
+        </div>
+        <div class="form-group">
+          <label for="vigilante_inicio">
+            <i class="fas fa-user"></i> Nome do Motorista
+          </label>
+          <input type="text" name="vigilante_inicio" id="vigilante_inicio" required autocomplete="name" value="<%= username %>" readonly>
+        </div>
+        <div class="form-group">
+          <label for="avarias_abertura">
+            <i class="fas fa-exclamation-triangle"></i> Encontrou avarias?
+          </label>
+          <select name="avarias" id="avarias_abertura" required>
+            <option value="">Selecione</option>
+            <option value="Sim">Sim</option>
+            <option value="Não">Não</option>
+          </select>
+        </div>
+        <div class="form-group hidden" id="observacoes-abertura-box">
+          <label for="observacoes_abertura">
+            <i class="fas fa-comment-alt"></i> Descreva as Avarias
+          </label>
+          <input type="text" name="observacoes" id="observacoes_abertura" placeholder="Descreva as avarias encontradas">
+        </div>
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-check"></i>
+          <span>Abrir Uso</span>
+        </button>
+      </form>
     </div>
 
-    <div id="card-abertura" class="form-card hidden">
-    <form id="form-abertura" class="vtr-form hidden">
-      <input type="hidden" name="vtr_id" id="abertura_vtr_id">
-      <h3><i class="fas fa-door-open"></i> Abertura de Uso</h3>
-      <div class="form-group">
-        <label for="km_inicial" id="label_km_inicial">KM Inicial</label>
-        <input type="number" name="km_inicial" id="km_inicial" required min="0" step="1" inputmode="numeric">
-        <div id="km_hint" class="form-help hidden"></div>
-      </div>
-      <div class="form-group">
-        <label for="vigilante_inicio">Nome do Motorista</label>
-        <input type="text" name="vigilante_inicio" id="vigilante_inicio" required autocomplete="name" value="<%= username %>" readonly>
-      </div>
-      <div class="form-group">
-        <label>Encontrou avarias?</label>
-        <select name="avarias" id="avarias_abertura" required>
-          <option value="">Selecione</option>
-          <option value="Sim">Sim</option>
-          <option value="Não">Não</option>
-        </select>
-      </div>
-      <div class="form-group hidden" id="observacoes-abertura-box">
-        <label for="observacoes_abertura">Descreva as Avarias</label>
-        <input type="text" name="observacoes" id="observacoes_abertura">
-      </div>
-      <button type="submit" class="btn btn-purple full">Abrir Uso</button>
-    </form>
+    <!-- Formulário de Encerramento -->
+    <div id="card-encerramento" class="card hidden">
+      <h2 class="card-title">
+        <i class="fas fa-door-closed"></i>
+        <span>Encerrar Uso</span>
+      </h2>
+      <form id="form-encerramento">
+        <input type="hidden" name="uso_id" id="uso_id">
+        <div class="form-group">
+          <label for="km_final">
+            <i class="fas fa-tachometer-alt"></i> KM Final
+          </label>
+          <input type="number" name="km_final" id="km_final" required min="0" step="1" inputmode="numeric" placeholder="Digite o KM final">
+        </div>
+        <div class="form-group">
+          <label for="abastecimento">
+            <i class="fas fa-gas-pump"></i> Necessário abastecer?
+          </label>
+          <select name="abastecimento" id="abastecimento" required>
+            <option value="">Selecione</option>
+            <option value="Sim">Sim</option>
+            <option value="Não">Não</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="avarias">
+            <i class="fas fa-exclamation-triangle"></i> Encontrou avarias?
+          </label>
+          <select name="avarias" id="avarias" required>
+            <option value="">Selecione</option>
+            <option value="Sim">Sim</option>
+            <option value="Não">Não</option>
+          </select>
+        </div>
+        <div class="form-group hidden" id="observacoes-box">
+          <label for="observacoes">
+            <i class="fas fa-comment-alt"></i> Descreva as Avarias
+          </label>
+          <input type="text" name="observacoes" id="observacoes" placeholder="Descreva as avarias encontradas">
+        </div>
+        <div class="form-group">
+          <label for="vigilante_fim">
+            <i class="fas fa-user"></i> Nome do Motorista
+          </label>
+          <input type="text" name="vigilante_fim" id="vigilante_fim" required autocomplete="name" value="<%= username %>" readonly>
+        </div>
+        <button type="submit" class="btn btn-danger">
+          <i class="fas fa-times"></i>
+          <span>Encerrar Uso</span>
+        </button>
+      </form>
     </div>
 
-    <div id="card-encerramento" class="form-card hidden">
-    <form id="form-encerramento" class="vtr-form hidden">
-      <input type="hidden" name="uso_id" id="uso_id">
-      <h3><i class="fas fa-door-closed"></i> Encerramento de Uso</h3>
-      <div class="form-group">
-        <label for="km_final" id="label_km_final">KM Final</label>
-        <input type="number" name="km_final" id="km_final" required min="0" step="1" inputmode="numeric">
-      </div>
-      <div class="form-group">
-        <label>Necessário abastecer</label>
-        <select name="abastecimento" id="abastecimento" required>
-          <option value="">Selecione</option>
-          <option value="Sim">Sim</option>
-          <option value="Não">Não</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Encontrou avarias?</label>
-        <select name="avarias" id="avarias" required>
-          <option value="">Selecione</option>
-          <option value="Sim">Sim</option>
-          <option value="Não">Não</option>
-        </select>
-      </div>
-      <div class="form-group hidden" id="observacoes-box">
-        <label for="observacoes">Descreva as Avarias</label>
-        <input type="text" name="observacoes" id="observacoes">
-      </div>
-      <div class="form-group">
-        <label for="vigilante_fim">Nome do Motorista</label>
-        <input type="text" name="vigilante_fim" id="vigilante_fim" required autocomplete="name" value="<%= username %>" readonly>
-      </div>
-      <button type="submit" class="btn btn-purple full">Encerrar Uso</button>
-    </form>
-    </div>
-
-    <div id="card-reabertura" class="form-card hidden">
-    <form id="form-reabertura" class="vtr-form hidden">
-      <input type="hidden" name="vtr_id" id="reabertura_vtr_id">
-      <h3><i class="fas fa-redo"></i> Abertura Imediata</h3>
-      <div class="form-group">
-        <label for="km_inicial2">KM Inicial</label>
-        <input type="number" name="km_inicial" id="km_inicial2" required min="0" step="1" inputmode="numeric">
-      </div>
-      <div class="form-group">
-        <label for="vigilante_inicio2">Nome do Motorista</label>
-        <input type="text" name="vigilante_inicio" id="vigilante_inicio2" required autocomplete="name" value="<%= username %>" readonly>
-      </div>
-      <button type="submit" class="btn btn-purple full">Abrir Novo Uso</button>
-    </form>
+    <!-- Formulário de Reabertura -->
+    <div id="card-reabertura" class="card hidden">
+      <h2 class="card-title">
+        <i class="fas fa-redo"></i>
+        <span>Reabrir Uso</span>
+      </h2>
+      <form id="form-reabertura">
+        <input type="hidden" name="vtr_id" id="reabertura_vtr_id">
+        <div class="form-group">
+          <label for="km_inicial2">
+            <i class="fas fa-tachometer-alt"></i> KM Inicial
+          </label>
+          <input type="number" name="km_inicial" id="km_inicial2" required min="0" step="1" inputmode="numeric" placeholder="Digite o KM inicial">
+        </div>
+        <div class="form-group">
+          <label for="vigilante_inicio2">
+            <i class="fas fa-user"></i> Nome do Motorista
+          </label>
+          <input type="text" name="vigilante_inicio" id="vigilante_inicio2" required autocomplete="name" value="<%= username %>" readonly>
+        </div>
+        <button type="submit" class="btn btn-success">
+          <i class="fas fa-check"></i>
+          <span>Reabrir Uso</span>
+        </button>
+      </form>
     </div>
   </div>
 
-  <div id="popup-msg" class="popup-msg hidden" role="status" aria-live="polite"></div>
+  <div id="popup-msg" class="popup-msg hidden">
+    <i class="fas fa-check-circle"></i>
+    <span></span>
+  </div>
 
   <script>
     const currentUser = '<%= username %>';
@@ -208,46 +882,48 @@
     const cardReabertura = document.getElementById('card-reabertura');
     const observacoesBox = document.getElementById('observacoes-box');
     const popupMsg = document.getElementById('popup-msg');
+    const popupMsgSpan = popupMsg.querySelector('span');
     const kmHint = document.getElementById('km_hint');
+    const kmHintSpan = kmHint.querySelector('span');
     const usoInfo = document.getElementById('uso_info');
     const usoInfoText = document.getElementById('uso_info_text');
-    const labelKmFinal = document.getElementById('label_km_final');
-    const labelKmInicial = document.getElementById('label_km_inicial');
 
     let kmInicialAtual = null;
     let ultimoKmFinal = 0;
 
     vtrSelect.addEventListener('change', async () => {
       const vtrId = vtrSelect.value;
-      if (!vtrId) return;
+      if (!vtrId) {
+        cardAbertura.classList.add('hidden');
+        cardEncerramento.classList.add('hidden');
+        cardReabertura.classList.add('hidden');
+        usoInfo.classList.add('hidden');
+        return;
+      }
 
       const res = await fetch(`/status-veiculo/${vtrId}`);
       const uso = await res.json();
 
-      formAbertura.classList.add('hidden');
-      formEncerramento.classList.add('hidden');
-      formReabertura.classList.add('hidden');
       cardAbertura.classList.add('hidden');
       cardEncerramento.classList.add('hidden');
       cardReabertura.classList.add('hidden');
       usoInfo.classList.add('hidden');
 
       if (uso) {
-        // Se há uso ativo:
-        // - USUARIO: só pode encerrar se for quem abriu
-        // - BASE/Admin: pode encerrar qualquer veículo
         const canOverride = (currentRole !== 'USUARIO');
         if (uso.vigilante_inicio === currentUser || canOverride) {
           document.getElementById('uso_id').value = uso.id;
           document.getElementById('km_final').value = '';
           document.getElementById('km_final').removeAttribute('min');
-          labelKmFinal.textContent = 'KM Final';
           kmInicialAtual = uso.km_inicial;
           ultimoKmFinal = uso.km_inicial;
           formEncerramento.classList.remove('hidden');
           cardEncerramento.classList.remove('hidden');
+          
+          setTimeout(() => {
+            cardEncerramento.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }, 100);
         } else {
-          // Usuário diferente: exibir mensagem em alerta visível e manter formulários ocultos
           usoInfoText.textContent = `Veículo em uso por ${uso.vigilante_inicio}. Aguarde o encerramento.`;
           usoInfo.classList.remove('hidden');
         }
@@ -255,7 +931,6 @@
         document.getElementById('abertura_vtr_id').value = vtrId;
         kmInicialAtual = null;
 
-        // NOVO: buscar diretamente o KM final da API dedicada
         try {
           const resKm = await fetch(`/ultimo-km/${vtrId}`, { cache: 'no-store' });
           const dataKm = await resKm.json();
@@ -264,11 +939,14 @@
           ultimoKmFinal = 0;
         }
 
-        labelKmInicial.textContent = 'KM Inicial';
-        kmHint.textContent = `Último KM registrado: ${ultimoKmFinal}`;
+        kmHintSpan.textContent = `Último KM registrado: ${ultimoKmFinal}`;
         kmHint.classList.remove('hidden');
         formAbertura.classList.remove('hidden');
         cardAbertura.classList.remove('hidden');
+        
+        setTimeout(() => {
+          cardAbertura.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 100);
       }
     });
 
@@ -310,43 +988,71 @@
         body: JSON.stringify(data)
       });
 
-      if (res.ok) showPopup(sucessoMsg);
-      else showPopup('Erro ao processar o formulário');
+      if (res.ok) {
+        showPopup(sucessoMsg);
+      } else {
+        const errorText = await res.text();
+        showPopup(errorText || 'Erro ao processar o formulário');
+      }
     }
 
     formAbertura.addEventListener('submit', e => {
       e.preventDefault();
       const kmInicial = parseInt(document.getElementById('km_inicial').value);
       if (kmInicial < ultimoKmFinal) {
-        alert(`O KM inicial deve ser maior ou igual a ${ultimoKmFinal}.`);
+        showPopup(`O KM inicial deve ser maior ou igual a ${ultimoKmFinal}.`);
         return;
       }
-      enviarJsonFormulario(formAbertura, '/abrir-uso', 'Veículo aberto para uso.');
+      enviarJsonFormulario(formAbertura, '/abrir-uso', 'Veículo aberto para uso com sucesso!');
     });
 
     formEncerramento.addEventListener('submit', e => {
       e.preventDefault();
       const kmFinal = parseInt(document.getElementById('km_final').value);
       if (kmInicialAtual !== null && kmFinal < kmInicialAtual) {
-        alert('O KM final não pode ser menor que o KM inicial.');
+        showPopup('O KM final não pode ser menor que o KM inicial.');
         return;
       }
-      enviarJsonFormulario(formEncerramento, '/encerrar-uso', 'Veículo fechado com sucesso.');
+      enviarJsonFormulario(formEncerramento, '/encerrar-uso', 'Veículo encerrado com sucesso!');
     });
 
     formReabertura.addEventListener('submit', e => {
       e.preventDefault();
-      enviarJsonFormulario(formReabertura, '/abrir-uso', 'Veículo reaberto para novo uso.');
+      enviarJsonFormulario(formReabertura, '/abrir-uso', 'Veículo reaberto para novo uso!');
     });
 
     function showPopup(texto) {
-      popupMsg.innerText = texto;
+      popupMsgSpan.textContent = texto;
       popupMsg.classList.remove('hidden');
       setTimeout(() => {
         popupMsg.classList.add('hidden');
         location.reload();
-      }, 2000);
+      }, 2500);
     }
+
+    // Adicionar evento de clique nos cards de uso ativo
+    document.querySelectorAll('.uso-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const vtrId = card.getAttribute('data-vtr-id');
+        if (vtrId) {
+          // Selecionar o veículo no dropdown
+          vtrSelect.value = vtrId;
+          // Disparar o evento change para carregar o formulário de encerramento
+          vtrSelect.dispatchEvent(new Event('change'));
+          // Scroll suave até o formulário
+          setTimeout(() => {
+            const cardEncerramento = document.getElementById('card-encerramento');
+            if (cardEncerramento && !cardEncerramento.classList.contains('hidden')) {
+              cardEncerramento.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          }, 200);
+        }
+      });
+    });
+
+    window.addEventListener('load', () => {
+      vtrSelect.focus();
+    });
   </script>
 </body>
 </html>

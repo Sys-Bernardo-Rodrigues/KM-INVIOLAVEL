@@ -9,6 +9,459 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --muted: #6b7280;
+      --text: #111827;
+      --border: #e5e7eb;
+      --shadow: 0 4px 16px rgba(17, 24, 39, 0.08);
+      --success: #16a34a;
+      --danger: #dc2626;
+      --primary: #7c3aed;
+      --warning: #ca8a04;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .main-content {
+      padding: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .page-header {
+      margin-bottom: 24px;
+    }
+
+    .page-header h1 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin: 0 0 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .page-header p {
+      color: var(--muted);
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(17, 24, 39, 0.12);
+    }
+
+    .stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .stat-icon.total { background: #eef2ff; color: #6366f1; }
+    .stat-icon.admin { background: #fef3c7; color: #d97706; }
+    .stat-icon.base { background: #dbeafe; color: #2563eb; }
+    .stat-icon.usuario { background: #f3e8ff; color: #9333ea; }
+
+    .stat-content {
+      flex: 1;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      background: var(--card-bg);
+      padding: 16px 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      min-width: 300px;
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+      max-width: 500px;
+      min-width: 300px;
+    }
+
+    .search-box i {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 0 14px 0 40px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      background: var(--card-bg);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      height: 40px;
+      line-height: 40px;
+      box-sizing: border-box;
+      margin: 0;
+      vertical-align: middle;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+    }
+
+    .filter-select {
+      padding: 0 36px 0 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card-bg);
+      font-size: 14px;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      min-width: 180px;
+      max-width: 200px;
+      height: 40px;
+      line-height: 40px;
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      box-sizing: border-box;
+      margin: 0;
+    }
+
+    .filter-select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+    }
+
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-clear {
+      padding: 10px 16px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card-bg);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .btn-clear:hover {
+      background: #f3f4f6;
+      border-color: var(--muted);
+      transform: translateY(-1px);
+    }
+
+    .users-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    .user-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .user-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), #a855f7);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .user-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(17, 24, 39, 0.12);
+      border-color: var(--primary);
+    }
+
+    .user-card:hover::before {
+      opacity: 1;
+    }
+
+    .user-card.hidden {
+      display: none;
+    }
+
+    .user-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .user-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary), #a855f7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 24px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .user-info {
+      flex: 1;
+      margin-left: 16px;
+    }
+
+    .user-name {
+      font-size: 18px;
+      font-weight: 700;
+      margin: 0 0 4px 0;
+      color: var(--text);
+    }
+
+    .user-id {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .user-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 16px 0;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid;
+    }
+
+    .badge.admin {
+      background: #fef3c7;
+      color: #d97706;
+      border-color: #fde68a;
+    }
+
+    .badge.base {
+      background: #dbeafe;
+      color: #2563eb;
+      border-color: #bfdbfe;
+    }
+
+    .badge.usuario {
+      background: #f3e8ff;
+      color: #9333ea;
+      border-color: #e9d5ff;
+    }
+
+    .badge.unidade {
+      background: #f0fdf4;
+      color: #16a34a;
+      border-color: #bbf7d0;
+    }
+
+    .badge.no-unidade {
+      background: #f3f4f6;
+      color: #6b7280;
+      border-color: #e5e7eb;
+      opacity: 0.7;
+    }
+
+    .user-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .user-actions .btn {
+      flex: 1;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: none;
+    }
+
+    .btn-edit {
+      background: #eef2ff;
+      color: #6366f1;
+    }
+
+    .btn-edit:hover {
+      background: #e0e7ff;
+      transform: translateY(-1px);
+    }
+
+    .btn-delete {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+
+    .btn-delete:hover {
+      background: #fecaca;
+      transform: translateY(-1px);
+    }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+
+    .empty-state i {
+      font-size: 64px;
+      color: var(--muted);
+      opacity: 0.3;
+      margin-bottom: 16px;
+    }
+
+    .empty-state p {
+      color: var(--muted);
+      font-size: 16px;
+      margin: 0;
+    }
+
+    @media (max-width: 768px) {
+      .users-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 12px;
+      }
+
+      .toolbar-left {
+        flex-direction: column;
+        min-width: auto;
+        gap: 10px;
+      }
+
+      .search-box {
+        max-width: 100%;
+      }
+
+      .filter-select {
+        min-width: 100%;
+        width: 100%;
+      }
+
+      .toolbar-right {
+        flex-direction: column;
+        width: 100%;
+        gap: 10px;
+      }
+
+      .toolbar-right .btn-clear,
+      .toolbar-right .btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
 </head>
 <body>
   <div class="topnav">
@@ -19,6 +472,7 @@
       <li><a href="/historico"><i class="fas fa-clock-rotate-left"></i> Histórico</a></li>
       <% if (role === 'Administrador') { %>
         <li><a href="/admin/cadastrar-usuario"><i class="fas fa-user-plus"></i> Cadastrar Usuário</a></li>
+        <li><a href="/cadastrar-unidade"><i class="fas fa-building"></i> Cadastrar Unidade</a></li>
       <% } %>
       <% if (role === 'Administrador' || role === 'BASE') { %>
         <li><a href="/graficos"><i class="fas fa-chart-line"></i> Gráficos</a></li>
@@ -26,102 +480,266 @@
       <li><a href="/logout"><i class="fas fa-right-from-bracket"></i> Sair</a></li>
     </ul>
   </div>
-  <div class="main-content">
-    <!-- Header removido conforme pedido (h1 e p) -->
 
-    <div class="toolbar" aria-label="Ferramentas de busca">
-      <div class="search">
-        <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
-        <input id="user-search" type="text" placeholder="Buscar usuário..." aria-label="Buscar usuário">
+  <div class="main-content">
+    <div class="page-header">
+      <h1><i class="fas fa-users"></i> Gerenciar Usuários</h1>
+      <p>Cadastre, edite e gerencie os usuários do sistema</p>
+    </div>
+
+    <% 
+      let totalUsuarios = usuarios.length;
+      let totalAdmin = usuarios.filter(u => u.tipo === 'Administrador').length;
+      let totalBase = usuarios.filter(u => u.tipo === 'BASE').length;
+      let totalUsuario = usuarios.filter(u => u.tipo === 'USUARIO').length;
+    %>
+
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-icon total"><i class="fas fa-users"></i></div>
+        <div class="stat-content">
+          <div class="stat-value"><%= totalUsuarios %></div>
+          <div class="stat-label">Total de Usuários</div>
+        </div>
       </div>
-      <div class="filters" aria-label="Ações rápidas">
-        <div class="chip filter-chip" id="show-all" title="Mostrar todos">Todos</div>
-        <button class="btn btn-primary" id="open-user-modal"><i class="fas fa-user-plus"></i> Novo Usuário</button>
+      <div class="stat-card">
+        <div class="stat-icon admin"><i class="fas fa-user-shield"></i></div>
+        <div class="stat-content">
+          <div class="stat-value"><%= totalAdmin %></div>
+          <div class="stat-label">Administradores</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon base"><i class="fas fa-user-tie"></i></div>
+        <div class="stat-content">
+          <div class="stat-value"><%= totalBase %></div>
+          <div class="stat-label">BASE</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon usuario"><i class="fas fa-user"></i></div>
+        <div class="stat-content">
+          <div class="stat-value"><%= totalUsuario %></div>
+          <div class="stat-label">Usuários</div>
+        </div>
       </div>
     </div>
+
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="search-box">
+          <i class="fas fa-magnifying-glass"></i>
+          <input id="user-search" type="text" placeholder="Buscar usuário..." aria-label="Buscar usuário">
+        </div>
+        <select id="filter-unidade" class="filter-select" title="Filtrar por unidade">
+          <option value="">Todas as unidades</option>
+          <% if (typeof unidades !== 'undefined' && unidades) { %>
+            <% unidades.forEach(unidade => { %>
+              <option value="<%= unidade.id %>"><%= unidade.nome %></option>
+            <% }); %>
+          <% } %>
+        </select>
+      </div>
+      <div class="toolbar-right">
+        <button class="btn btn-primary" id="open-user-modal">
+          <i class="fas fa-user-plus"></i> Novo Usuário
+        </button>
+      </div>
+    </div>
+
     <% if (mensagem) { %>
       <div id="user-toast" class="popup-msg <%= mensagemTipo || 'success' %>">
         <i class="fas fa-info-circle" aria-hidden="true"></i>
         <span><%= mensagem %></span>
       </div>
       <script>
-        // Esconde automaticamente o toast após alguns segundos
         setTimeout(() => {
           document.getElementById('user-toast')?.classList.add('hidden');
         }, 2600);
       </script>
     <% } %>
-    <!-- Modal de cadastro de usuário -->
-    <div id="user-modal-backdrop" class="modal-backdrop" aria-hidden="true"></div>
-    <div id="user-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="user-modal-title" style="display:none">
-      <header>
-        <div class="title"><i class="fas fa-user-plus"></i> <span id="user-modal-title">Cadastrar Usuário</span></div>
-        <button id="close-user-modal" class="close-btn" aria-label="Fechar"><i class="fas fa-xmark"></i></button>
-      </header>
-      <div class="content">
-        <form id="user-form" action="/admin/cadastrar-usuario" method="POST">
-          <div class="form-group">
-            <label for="username">Nome de usuário</label>
-            <input type="text" name="username" id="username" required>
-          </div>
-          <div class="form-group">
-            <label for="password">Senha</label>
-            <input type="password" name="password" id="password" required>
-          </div>
-          <div class="form-group">
-            <label for="tipo">Tipo de usuário</label>
-            <select name="tipo" id="tipo" required>
-              <option value="USUARIO">USUÁRIO</option>
-              <option value="BASE">BASE</option>
-              <option value="Administrador">ADMINISTRADOR</option>
-            </select>
-          </div>
-          <div class="actions">
-            <button type="button" class="btn" id="cancel-user-modal">Cancelar</button>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Cadastrar</button>
-          </div>
-        </form>
-      </div>
-    </div>
 
-    <div class="table-card" style="padding: 12px;">
-      <div id="user-list">
-        <% usuarios.forEach(user => { %>
-          <div class="user-item" data-username="<%= (user.username || '').toLowerCase() %>" style="display:flex; align-items:center; justify-content:space-between; padding:12px 4px; border-bottom:1px solid var(--border);">
-            <div style="display:flex; align-items:center; gap:12px;">
-              <div class="cell-title"><i class="fas fa-user"></i> <%= user.username %></div>
-              <div class="chip muted">ID: <%= user.id || '-' %></div>
-              <div class="chip"><i class="fas fa-id-badge"></i> <%= user.tipo || 'USUARIO' %></div>
+    <div id="user-list" class="users-grid">
+      <% usuarios.forEach(user => { %>
+        <div class="user-card" 
+             data-username="<%= (user.username || '').toLowerCase() %>" 
+             data-unidade-ids="<%= user.unidades ? user.unidades.map(u => u.unidade_id).join(',') : '' %>">
+          <div class="user-header">
+            <div class="user-avatar">
+              <%= (user.username || '').charAt(0).toUpperCase() %>
             </div>
-            <div>
-              <form action="/admin/deletar-usuario" method="POST" class="inline-form">
-                <input type="hidden" name="username" value="<%= user.username %>">
-                <button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> Apagar</button>
-              </form>
+            <div class="user-info">
+              <h3 class="user-name"><%= user.username %></h3>
+              <p class="user-id">ID: <%= user.id || '-' %></p>
             </div>
           </div>
-        <% }) %>
-      </div>
+          <div class="user-badges">
+            <span class="badge <%= (user.tipo || 'USUARIO').toLowerCase() %>">
+              <i class="fas fa-<%= user.tipo === 'Administrador' ? 'user-shield' : user.tipo === 'BASE' ? 'user-tie' : 'user' %>"></i>
+              <%= user.tipo || 'USUARIO' %>
+            </span>
+            <% if (user.unidades && user.unidades.length > 0) { %>
+              <% user.unidades.forEach(unidade => { %>
+                <span class="badge unidade">
+                  <i class="fas fa-building"></i>
+                  <%= unidade.unidade_nome %>
+                </span>
+              <% }); %>
+            <% } else { %>
+              <span class="badge no-unidade">
+                <i class="fas fa-building"></i>
+                Sem unidade
+              </span>
+            <% } %>
+          </div>
+          <div class="user-actions">
+            <button type="button" 
+                    class="btn btn-edit btn-editar-usuario" 
+                    data-user-id="<%= user.id %>"
+                    data-username="<%= user.username %>"
+                    data-tipo="<%= user.tipo || 'USUARIO' %>"
+                    data-unidade-ids="<%= user.unidades ? user.unidades.map(u => u.unidade_id).join(',') : '' %>">
+              <i class="fas fa-edit"></i> Editar
+            </button>
+            <form action="/admin/deletar-usuario" method="POST" class="inline-form" style="flex: 1; margin: 0;">
+              <input type="hidden" name="username" value="<%= user.username %>">
+              <button type="submit" class="btn btn-delete" onclick="return confirm('Tem certeza que deseja apagar o usuário <%= user.username %>?')">
+                <i class="fas fa-trash"></i> Apagar
+              </button>
+            </form>
+          </div>
+        </div>
+      <% }) %>
+      <% if (!usuarios || usuarios.length === 0) { %>
+        <div class="empty-state">
+          <i class="fas fa-users"></i>
+          <p>Nenhum usuário cadastrado ainda.</p>
+          <p style="font-size: 14px; margin-top: 8px;">Clique em "Novo Usuário" para começar.</p>
+        </div>
+      <% } %>
     </div>
   </div>
+
+  <!-- Modal de cadastro de usuário -->
+  <div id="user-modal-backdrop" class="modal-backdrop" aria-hidden="true"></div>
+  <div id="user-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="user-modal-title" style="display:none">
+    <header>
+      <div class="title"><i class="fas fa-user-plus"></i> <span id="user-modal-title">Cadastrar Usuário</span></div>
+      <button id="close-user-modal" class="close-btn" aria-label="Fechar"><i class="fas fa-xmark"></i></button>
+    </header>
+    <div class="content">
+      <form id="user-form" action="/admin/cadastrar-usuario" method="POST">
+        <div class="form-group">
+          <label for="username">Nome de usuário</label>
+          <input type="text" name="username" id="username" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Senha</label>
+          <input type="password" name="password" id="password" required>
+        </div>
+        <div class="form-group">
+          <label for="tipo">Tipo de usuário</label>
+          <select name="tipo" id="tipo" required>
+            <option value="USUARIO">USUÁRIO</option>
+            <option value="BASE">BASE</option>
+            <option value="Administrador">ADMINISTRADOR</option>
+          </select>
+        </div>
+          <div class="form-group">
+            <label>Unidades</label>
+            <div id="unidades-checkboxes" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--card-bg);">
+              <p style="margin: 0 0 12px 0; font-size: 13px; color: var(--muted);">Selecione uma ou mais unidades:</p>
+              <div id="unidades-list"></div>
+            </div>
+          </div>
+        <div class="actions">
+          <button type="button" class="btn" id="cancel-user-modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Cadastrar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal de edição de unidade do usuário -->
+  <div id="edit-unidade-modal-backdrop" class="modal-backdrop" aria-hidden="true"></div>
+  <div id="edit-unidade-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-unidade-modal-title" style="display:none">
+    <header>
+      <div class="title"><i class="fas fa-building"></i> <span id="edit-unidade-modal-title">Editar Unidade do Usuário</span></div>
+      <button id="close-edit-unidade-modal" class="close-btn" aria-label="Fechar"><i class="fas fa-xmark"></i></button>
+    </header>
+    <div class="content">
+      <form id="edit-unidade-form" action="/admin/editar-usuario" method="POST">
+        <input type="hidden" name="id" id="edit-user-id">
+        <input type="hidden" name="username" id="edit-username">
+        <input type="hidden" name="tipo" id="edit-tipo">
+        <div class="form-group">
+          <label>Usuário</label>
+          <div id="edit-user-display" class="km-info" style="padding: 12px; background: #f3f4f6; border-radius: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-user" style="color: var(--primary);"></i> <span id="edit-username-display" style="font-weight: 600;">-</span>
+          </div>
+        </div>
+          <div class="form-group">
+            <label>Unidades</label>
+            <div id="edit-unidades-checkboxes" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--card-bg);">
+              <p style="margin: 0 0 12px 0; font-size: 13px; color: var(--muted);">Selecione uma ou mais unidades:</p>
+              <div id="edit-unidades-list"></div>
+            </div>
+          </div>
+        <div class="actions">
+          <button type="button" class="btn" id="cancel-edit-unidade-modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
-    // Busca de usuários na tabela
+    // Array de unidades disponível globalmente
+    const todasUnidades = <%- JSON.stringify(unidades || []) %>;
+
+    // Busca e filtros
     const userSearch = document.getElementById('user-search');
+    const filterUnidade = document.getElementById('filter-unidade');
     const userList = document.getElementById('user-list');
+    
     function applyUserFilter() {
       const term = (userSearch?.value || '').toLowerCase();
-      userList?.querySelectorAll('.user-item').forEach(item => {
-        const name = item.getAttribute('data-username') || '';
-        item.style.display = name.includes(term) ? '' : 'none';
+      const unidadeId = filterUnidade?.value || '';
+      let visibleCount = 0;
+      
+      userList?.querySelectorAll('.user-card').forEach(card => {
+        const name = card.getAttribute('data-username') || '';
+        const itemUnidadeIds = (card.getAttribute('data-unidade-ids') || '').split(',').filter(id => id);
+        
+        const matchSearch = !term || name.includes(term);
+        const matchUnidade = !unidadeId || itemUnidadeIds.includes(unidadeId);
+        
+        if (matchSearch && matchUnidade) {
+          card.classList.remove('hidden');
+          visibleCount++;
+        } else {
+          card.classList.add('hidden');
+        }
       });
-    }
-    userSearch?.addEventListener('input', applyUserFilter);
-    document.getElementById('show-all')?.addEventListener('click', () => {
-      if (userSearch) userSearch.value = '';
-      applyUserFilter();
-    });
 
-    // Modal: abrir/fechar
+      // Mostrar mensagem se não houver resultados
+      let emptyState = userList.querySelector('.empty-state-filter');
+      if (visibleCount === 0 && userList.querySelectorAll('.user-card').length > 0) {
+        if (!emptyState) {
+          emptyState = document.createElement('div');
+          emptyState.className = 'empty-state empty-state-filter';
+          emptyState.innerHTML = '<i class="fas fa-search"></i><p>Nenhum usuário encontrado com os filtros aplicados.</p>';
+          userList.appendChild(emptyState);
+        }
+      } else if (emptyState) {
+        emptyState.remove();
+      }
+    }
+    
+    userSearch?.addEventListener('input', applyUserFilter);
+    filterUnidade?.addEventListener('change', applyUserFilter);
+
+    // Modal de cadastro
     (function() {
       const backdrop = document.getElementById('user-modal-backdrop');
       const modal = document.getElementById('user-modal');
@@ -131,11 +749,28 @@
       const usernameInput = document.getElementById('username');
 
       function openModal() {
+        const unidadesList = document.getElementById('unidades-list');
+        if (unidadesList) {
+          unidadesList.innerHTML = '';
+          
+          todasUnidades.forEach(unidade => {
+            const checkbox = document.createElement('label');
+            checkbox.style.cssText = 'display: flex; align-items: center; gap: 8px; padding: 8px; cursor: pointer; border-radius: 6px; transition: background 0.2s;';
+            checkbox.innerHTML = `
+              <input type="checkbox" name="unidades[]" value="${unidade.id}" style="cursor: pointer;">
+              <span>${unidade.nome}</span>
+            `;
+            checkbox.addEventListener('mouseenter', () => checkbox.style.background = '#f3f4f6');
+            checkbox.addEventListener('mouseleave', () => checkbox.style.background = 'transparent');
+            unidadesList.appendChild(checkbox);
+          });
+        }
         backdrop.classList.add('open');
         modal.style.display = 'block';
         modal.classList.add('open');
         setTimeout(() => usernameInput?.focus(), 10);
       }
+      
       function closeModal() {
         backdrop.classList.remove('open');
         modal.classList.remove('open');
@@ -148,6 +783,69 @@
       backdrop?.addEventListener('click', closeModal);
       window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeModal();
+      });
+    })();
+
+    // Modal de edição de unidade
+    (function() {
+      const backdrop = document.getElementById('edit-unidade-modal-backdrop');
+      const modal = document.getElementById('edit-unidade-modal');
+      const closeBtn = document.getElementById('close-edit-unidade-modal');
+      const cancelBtn = document.getElementById('cancel-edit-unidade-modal');
+
+      function openEditModal(usuario) {
+        const editUnidadesList = document.getElementById('edit-unidades-list');
+        if (editUnidadesList) {
+          editUnidadesList.innerHTML = '';
+          const usuarioUnidades = (usuario.unidade_id || '').split(',').filter(id => id);
+          
+          todasUnidades.forEach(unidade => {
+            const checkbox = document.createElement('label');
+            checkbox.style.cssText = 'display: flex; align-items: center; gap: 8px; padding: 8px; cursor: pointer; border-radius: 6px; transition: background 0.2s;';
+            const isChecked = usuarioUnidades.includes(String(unidade.id));
+            checkbox.innerHTML = `
+              <input type="checkbox" name="unidades[]" value="${unidade.id}" ${isChecked ? 'checked' : ''} style="cursor: pointer;">
+              <span>${unidade.nome}</span>
+            `;
+            checkbox.addEventListener('mouseenter', () => checkbox.style.background = '#f3f4f6');
+            checkbox.addEventListener('mouseleave', () => checkbox.style.background = 'transparent');
+            editUnidadesList.appendChild(checkbox);
+          });
+        }
+
+        document.getElementById('edit-user-id').value = usuario.id || '';
+        document.getElementById('edit-username').value = usuario.username || '';
+        document.getElementById('edit-tipo').value = usuario.tipo || 'USUARIO';
+        document.getElementById('edit-username-display').textContent = usuario.username || '-';
+
+        backdrop.classList.add('open');
+        modal.style.display = 'block';
+        modal.classList.add('open');
+      }
+
+      function closeEditModal() {
+        backdrop.classList.remove('open');
+        modal.classList.remove('open');
+        modal.style.display = 'none';
+      }
+
+      document.querySelectorAll('.btn-editar-usuario').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const usuario = {
+            id: this.getAttribute('data-user-id'),
+            username: this.getAttribute('data-username'),
+            tipo: this.getAttribute('data-tipo'),
+            unidade_id: this.getAttribute('data-unidade-ids') || ''
+          };
+          openEditModal(usuario);
+        });
+      });
+
+      closeBtn?.addEventListener('click', closeEditModal);
+      cancelBtn?.addEventListener('click', closeEditModal);
+      backdrop?.addEventListener('click', closeEditModal);
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.style.display === 'block') closeEditModal();
       });
     })();
   </script>
