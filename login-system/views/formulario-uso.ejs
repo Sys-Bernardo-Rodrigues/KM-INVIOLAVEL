@@ -296,6 +296,33 @@
       color: var(--info);
     }
 
+    .btn-inline {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px dashed rgba(37, 99, 235, 0.6);
+      background: rgba(239, 246, 255, 0.9);
+      color: #1d4ed8;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      transition: all 0.2s ease;
+    }
+
+    .btn-inline i {
+      font-size: 12px;
+    }
+
+    .btn-inline:hover {
+      background: #dbeafe;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(59, 130, 246, 0.25);
+    }
+
     .btn {
       width: 100%;
       padding: 16px 24px;
@@ -564,6 +591,93 @@
       gap: 12px;
     }
 
+    .camera-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 3000;
+    }
+
+    .camera-modal {
+      background: #020617;
+      border-radius: 18px;
+      padding: 16px;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      color: #e5e7eb;
+    }
+
+    .camera-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .camera-header span {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #9ca3af;
+    }
+
+    .camera-close {
+      background: transparent;
+      border: none;
+      color: #9ca3af;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px;
+    }
+
+    .camera-video-wrapper {
+      position: relative;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #020617;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+    }
+
+    #camera-video {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .camera-actions {
+      display: flex;
+      justify-content: center;
+      margin-top: 12px;
+      gap: 12px;
+    }
+
+    .camera-capture-btn {
+      background: var(--gradient-primary);
+      border-radius: 999px;
+      border: none;
+      padding: 10px 22px;
+      color: #fff;
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 8px 30px rgba(124, 58, 237, 0.6);
+    }
+
+    .camera-capture-btn i {
+      font-size: 14px;
+    }
+
     @keyframes slideUpPopup {
       from {
         transform: translateX(-50%) translateY(100px);
@@ -666,6 +780,26 @@
     </div>
   </div>
 
+  <div id="camera-overlay" class="camera-overlay hidden">
+    <div class="camera-modal">
+      <div class="camera-header">
+        <span>Apontar para o painel e centralizar o odômetro</span>
+        <button type="button" id="camera-close" class="camera-close" aria-label="Fechar câmera">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="camera-video-wrapper">
+        <video id="camera-video" autoplay playsinline></video>
+      </div>
+      <div class="camera-actions">
+        <button type="button" id="camera-capture" class="camera-capture-btn">
+          <i class="fas fa-camera"></i>
+          Capturar foto e ler KM
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div class="main-content">
     <div class="page-header">
       <h1>
@@ -754,6 +888,14 @@
             <i class="fas fa-info-circle"></i>
             <span></span>
           </div>
+          <div class="form-help">
+            <i class="fas fa-camera"></i>
+            <button type="button" id="btn-foto-km-inicial" class="btn-inline">
+              <i class="fas fa-bolt"></i>
+              Ler KM pela foto do painel
+            </button>
+            <input type="file" id="foto-km-inicial" accept="image/*" capture="environment" style="display:none">
+          </div>
         </div>
         <div class="form-group">
           <label for="vigilante_inicio">
@@ -797,6 +939,14 @@
             <i class="fas fa-tachometer-alt"></i> KM Final
           </label>
           <input type="number" name="km_final" id="km_final" required min="0" step="1" inputmode="numeric" placeholder="Digite o KM final">
+          <div class="form-help">
+            <i class="fas fa-camera"></i>
+            <button type="button" id="btn-foto-km-final" class="btn-inline">
+              <i class="fas fa-bolt"></i>
+              Ler KM pela foto do painel
+            </button>
+            <input type="file" id="foto-km-final" accept="image/*" capture="environment" style="display:none">
+          </div>
         </div>
         <div class="form-group">
           <label for="abastecimento">
@@ -887,9 +1037,19 @@
     const kmHintSpan = kmHint.querySelector('span');
     const usoInfo = document.getElementById('uso_info');
     const usoInfoText = document.getElementById('uso_info_text');
+    const btnFotoKmInicial = document.getElementById('btn-foto-km-inicial');
+    const inputFotoKmInicial = document.getElementById('foto-km-inicial');
+    const btnFotoKmFinal = document.getElementById('btn-foto-km-final');
+    const inputFotoKmFinal = document.getElementById('foto-km-final');
+    const cameraOverlay = document.getElementById('camera-overlay');
+    const cameraVideo = document.getElementById('camera-video');
+    const cameraCaptureBtn = document.getElementById('camera-capture');
+    const cameraCloseBtn = document.getElementById('camera-close');
 
     let kmInicialAtual = null;
     let ultimoKmFinal = 0;
+    let cameraStream = null;
+    let cameraCampoDestino = null;
 
     vtrSelect.addEventListener('change', async () => {
       const vtrId = vtrSelect.value;
@@ -1053,6 +1213,157 @@
     window.addEventListener('load', () => {
       vtrSelect.focus();
     });
+
+    async function abrirCamera(campoDestinoId) {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        // Fallback: input file
+        if (campoDestinoId === 'km_inicial' && inputFotoKmInicial) {
+          inputFotoKmInicial.click();
+        } else if (campoDestinoId === 'km_final' && inputFotoKmFinal) {
+          inputFotoKmFinal.click();
+        }
+        return;
+      }
+
+      try {
+        cameraCampoDestino = campoDestinoId;
+        cameraOverlay.classList.remove('hidden');
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false
+        });
+        cameraVideo.srcObject = cameraStream;
+        await cameraVideo.play();
+      } catch (err) {
+        console.error('Erro ao acessar câmera:', err);
+        cameraOverlay.classList.add('hidden');
+        showPopup('Não foi possível acessar a câmera. Verifique as permissões.');
+      }
+    }
+
+    function pararCamera() {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop && t.stop());
+        cameraStream = null;
+      }
+      cameraCampoDestino = null;
+      cameraOverlay.classList.add('hidden');
+    }
+
+    async function extrairKmDaImagem(file, campoDestinoId) {
+      if (!file) return;
+      if (!window.Tesseract) {
+        showPopup('Leitor de KM indisponível. Verifique sua conexão.');
+        return;
+      }
+
+      try {
+        showPopup('Lendo KM da foto. Aguarde...');
+        const { data } = await Tesseract.recognize(file, 'eng', {
+          logger: () => {}
+        });
+
+        const texto = (data && data.text) ? data.text : '';
+        // Captura apenas sequências numéricas de 3 a 7 dígitos (km típicos)
+        const brutas = texto.match(/\d{3,7}/g) || [];
+        const candidatos = [];
+        brutas.forEach(str => {
+          const n = parseInt(str, 10);
+          if (!Number.isNaN(n) && n >= 0 && n <= 999999) {
+            candidatos.push(n);
+          }
+        });
+
+        if (!candidatos.length) {
+          showPopup('Não foi possível identificar um valor de KM na foto. Digite manualmente.');
+          return;
+        }
+
+        // Regras de contexto para reduzir erros:
+        // - KM inicial: preferir valores >= ultimoKmFinal, o mais próximo possível
+        // - KM final:   se kmInicialAtual conhecido, preferir valores >= kmInicialAtual
+        let baseMin = 0;
+        if (campoDestinoId === 'km_inicial' && Number.isFinite(ultimoKmFinal) && ultimoKmFinal > 0) {
+          baseMin = ultimoKmFinal;
+        } else if (campoDestinoId === 'km_final' && Number.isFinite(kmInicialAtual) && kmInicialAtual > 0) {
+          baseMin = kmInicialAtual;
+        }
+
+        let escolhidos = candidatos;
+        if (baseMin > 0) {
+          const filtrados = candidatos.filter(v => v >= baseMin);
+          if (filtrados.length) {
+            // Entre os >= base, pega o mais próximo de baseMin
+            escolhidos = filtrados.sort((a, b) => Math.abs(a - baseMin) - Math.abs(b - baseMin));
+          } else {
+            // Se nada >= base, usa o maior candidato (melhor palpite)
+            escolhidos = candidatos.sort((a, b) => b - a);
+          }
+        } else {
+          // Sem base, usa o maior candidato (geralmente odômetro)
+          escolhidos = candidatos.sort((a, b) => b - a);
+        }
+
+        const kmNumero = escolhidos[0];
+
+        const campo = document.getElementById(campoDestinoId);
+        if (campo) {
+          campo.value = kmNumero;
+          campo.focus();
+        }
+        showPopup(`KM identificado automaticamente: ${kmNumero}`);
+      } catch (err) {
+        console.error('Erro ao ler KM pela foto:', err);
+        showPopup('Erro ao processar a foto. Digite o KM manualmente.');
+      }
+    }
+
+    if (btnFotoKmInicial && inputFotoKmInicial) {
+      btnFotoKmInicial.addEventListener('click', () => {
+        abrirCamera('km_inicial');
+      });
+      inputFotoKmInicial.addEventListener('change', () => {
+        const file = inputFotoKmInicial.files && inputFotoKmInicial.files[0];
+        extrairKmDaImagem(file, 'km_inicial');
+      });
+    }
+
+    if (btnFotoKmFinal && inputFotoKmFinal) {
+      btnFotoKmFinal.addEventListener('click', () => {
+        abrirCamera('km_final');
+      });
+      inputFotoKmFinal.addEventListener('change', () => {
+        const file = inputFotoKmFinal.files && inputFotoKmFinal.files[0];
+        extrairKmDaImagem(file, 'km_final');
+      });
+    }
+
+    if (cameraCloseBtn) {
+      cameraCloseBtn.addEventListener('click', () => {
+        pararCamera();
+      });
+    }
+
+    if (cameraCaptureBtn) {
+      cameraCaptureBtn.addEventListener('click', async () => {
+        if (!cameraVideo || !cameraCampoDestino) return;
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = cameraVideo.videoWidth || 1280;
+          canvas.height = cameraVideo.videoHeight || 720;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
+          const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+          pararCamera();
+          await extrairKmDaImagem(blob, cameraCampoDestino);
+        } catch (err) {
+          console.error('Erro ao capturar foto:', err);
+          pararCamera();
+          showPopup('Erro ao capturar a foto. Tente novamente ou digite o KM manualmente.');
+        }
+      });
+    }
   </script>
+  <script src="https://unpkg.com/tesseract.js@5.0.5/dist/tesseract.min.js"></script>
 </body>
 </html>
