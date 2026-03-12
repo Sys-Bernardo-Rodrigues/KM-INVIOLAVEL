@@ -1277,9 +1277,6 @@
 
       if (res.ok) {
         showPopup(sucessoMsg);
-        setTimeout(() => {
-          location.reload();
-        }, 2500);
       } else {
         const errorText = await res.text();
         showPopup(errorText || 'Erro ao processar o formulário');
