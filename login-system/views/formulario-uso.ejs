@@ -693,6 +693,100 @@
       font-size: 20px;
     }
 
+    .km-confirm-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 3500;
+    }
+
+    .km-confirm-modal {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 18px;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(15, 23, 42, 0.4);
+      border: 1px solid #e5e7eb;
+      color: #111827;
+    }
+
+    .km-confirm-header {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #111827;
+    }
+
+    .km-confirm-header i {
+      color: var(--primary);
+    }
+
+    .km-confirm-body {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .km-confirm-body img {
+      width: 100%;
+      max-height: 220px;
+      object-fit: contain;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      background: #020617;
+    }
+
+    .km-confirm-km {
+      font-size: 16px;
+      font-weight: 600;
+      color: #111827;
+      text-align: center;
+    }
+
+    .km-confirm-km span {
+      color: var(--primary);
+    }
+
+    .km-confirm-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .km-confirm-btn {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .km-confirm-btn-confirm {
+      background: var(--gradient-success);
+      color: #ffffff;
+    }
+
+    .km-confirm-btn-cancel {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
     .section-divider {
       height: 2px;
       background: linear-gradient(90deg, transparent, var(--border), transparent);
@@ -1020,6 +1114,31 @@
     <span></span>
   </div>
 
+  <div id="km-confirm-overlay" class="km-confirm-overlay hidden">
+    <div class="km-confirm-modal">
+      <div class="km-confirm-header">
+        <i class="fas fa-tachometer-alt"></i>
+        <span>Confirmar leitura de KM</span>
+      </div>
+      <div class="km-confirm-body">
+        <img id="km-confirm-image" src="" alt="Foto do painel para conferência do KM">
+        <div class="km-confirm-km">
+          KM identificado: <span id="km-confirm-value"></span>
+        </div>
+      </div>
+      <div class="km-confirm-actions">
+        <button type="button" id="km-confirm-cancel" class="km-confirm-btn km-confirm-btn-cancel">
+          <i class="fas fa-undo"></i>
+          Refazer foto
+        </button>
+        <button type="button" id="km-confirm-ok" class="km-confirm-btn km-confirm-btn-confirm">
+          <i class="fas fa-check"></i>
+          Confirmar KM
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const currentUser = '<%= username %>';
     const currentRole = '<%= role %>';
@@ -1045,11 +1164,19 @@
     const cameraVideo = document.getElementById('camera-video');
     const cameraCaptureBtn = document.getElementById('camera-capture');
     const cameraCloseBtn = document.getElementById('camera-close');
+    const kmConfirmOverlay = document.getElementById('km-confirm-overlay');
+    const kmConfirmImage = document.getElementById('km-confirm-image');
+    const kmConfirmValueSpan = document.getElementById('km-confirm-value');
+    const kmConfirmOkBtn = document.getElementById('km-confirm-ok');
+    const kmConfirmCancelBtn = document.getElementById('km-confirm-cancel');
 
     let kmInicialAtual = null;
     let ultimoKmFinal = 0;
     let cameraStream = null;
     let cameraCampoDestino = null;
+    let kmConfirmCampoDestino = null;
+    let kmConfirmValor = null;
+    let kmConfirmImageUrl = null;
 
     vtrSelect.addEventListener('change', async () => {
       const vtrId = vtrSelect.value;
@@ -1289,14 +1416,22 @@
         }
 
         const kmNumero = data.km;
-        const campo = document.getElementById(campoDestinoId);
-        if (campo && Number.isFinite(kmNumero)) {
-          campo.value = kmNumero;
-          campo.focus();
-          showPopup(`KM identificado automaticamente: ${kmNumero}`);
-        } else {
-          showPopup('Falha ao preencher o KM. Digite manualmente.');
+        if (!Number.isFinite(kmNumero)) {
+          showPopup('Valor de KM inválido retornado. Digite manualmente.');
+          return;
         }
+
+        // Preparar popup de confirmação com a própria imagem
+        if (kmConfirmImageUrl) {
+          URL.revokeObjectURL(kmConfirmImageUrl);
+          kmConfirmImageUrl = null;
+        }
+        kmConfirmCampoDestino = campoDestinoId;
+        kmConfirmValor = kmNumero;
+        kmConfirmImageUrl = URL.createObjectURL(file);
+        kmConfirmImage.src = kmConfirmImageUrl;
+        kmConfirmValueSpan.textContent = String(kmNumero);
+        kmConfirmOverlay.classList.remove('hidden');
       } catch (err) {
         console.error('Erro ao enviar imagem para OCR:', err);
         showPopup('Erro ao processar a foto. Digite o KM manualmente.');
@@ -1320,6 +1455,38 @@
       inputFotoKmFinal.addEventListener('change', () => {
         const file = inputFotoKmFinal.files && inputFotoKmFinal.files[0];
         enviarImagemParaOcr(file, 'km_final');
+      });
+    }
+
+    function fecharPopupKmConfirm() {
+      kmConfirmOverlay.classList.add('hidden');
+      if (kmConfirmImageUrl) {
+        URL.revokeObjectURL(kmConfirmImageUrl);
+        kmConfirmImageUrl = null;
+      }
+      kmConfirmCampoDestino = null;
+      kmConfirmValor = null;
+    }
+
+    if (kmConfirmCancelBtn) {
+      kmConfirmCancelBtn.addEventListener('click', () => {
+        fecharPopupKmConfirm();
+      });
+    }
+
+    if (kmConfirmOkBtn) {
+      kmConfirmOkBtn.addEventListener('click', () => {
+        if (!kmConfirmCampoDestino || !Number.isFinite(kmConfirmValor)) {
+          fecharPopupKmConfirm();
+          return;
+        }
+        const campo = document.getElementById(kmConfirmCampoDestino);
+        if (campo) {
+          campo.value = kmConfirmValor;
+          campo.focus();
+        }
+        fecharPopupKmConfirm();
+        showPopup(`KM confirmado: ${kmConfirmValor}`);
       });
     }
 

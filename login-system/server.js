@@ -1142,13 +1142,21 @@ app.get('/ultimo-km/:vtrId', (req, res) => {
 app.post('/api/ocr-km', upload.single('foto'), async (req, res) => {
   try {
     if (!OCRSPACE_API_KEY) {
+      console.error('[OCR-KM] Falha: OCRSPACE_API_KEY não configurada.');
       return res.status(500).json({ success: false, message: 'OCR não configurado no servidor.' });
     }
     if (!req.file) {
+      console.warn('[OCR-KM] Falha: requisição sem arquivo de imagem.');
       return res.status(400).json({ success: false, message: 'Nenhuma imagem recebida.' });
     }
 
     const baseMin = req.body && req.body.baseMin ? parseInt(req.body.baseMin, 10) : 0;
+    console.log('[OCR-KM] Requisição recebida.', {
+      filename: req.file.originalname,
+      mimetype: req.file.mimetype,
+      sizeBytes: req.file.size,
+      baseMin
+    });
 
     const form = new FormData();
     form.append('language', 'por');
@@ -1171,12 +1179,14 @@ app.post('/api/ocr-km', upload.single('foto'), async (req, res) => {
     const data = ocrResponse.data;
     if (!data || data.IsErroredOnProcessing) {
       const msg = (data && data.ErrorMessage) ? String(data.ErrorMessage) : 'Falha ao processar imagem no OCR.';
+      console.error('[OCR-KM] Erro retornado pelo OCR.Space:', msg);
       return res.status(500).json({ success: false, message: msg });
     }
 
     const parsedResults = Array.isArray(data.ParsedResults) ? data.ParsedResults : [];
     const parsedText = parsedResults.length > 0 && parsedResults[0].ParsedText ? parsedResults[0].ParsedText : '';
     if (!parsedText) {
+      console.warn('[OCR-KM] Sucesso no OCR, mas nenhum texto retornado.');
       return res.json({ success: false, message: 'Não foi possível ler texto na imagem.' });
     }
 
@@ -1187,6 +1197,9 @@ app.post('/api/ocr-km', upload.single('foto'), async (req, res) => {
       .filter(n => Number.isFinite(n) && n >= 0 && n <= 999999);
 
     if (!candidatos.length) {
+      console.warn('[OCR-KM] Texto lido mas nenhum número de KM plausível encontrado.', {
+        parsedSnippet: parsedText.slice(0, 120)
+      });
       return res.json({ success: false, message: 'Nenhum valor de KM plausível encontrado na imagem.' });
     }
 
@@ -1203,6 +1216,11 @@ app.post('/api/ocr-km', upload.single('foto'), async (req, res) => {
     }
 
     const km = escolhidos[0];
+    console.log('[OCR-KM] KM lido com sucesso.', {
+      km,
+      baseMin,
+      candidatos
+    });
     return res.json({ success: true, km, rawText: parsedText });
   } catch (err) {
     console.error('Erro na rota /api/ocr-km:', err);
