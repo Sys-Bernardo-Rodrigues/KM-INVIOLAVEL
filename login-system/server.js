@@ -2,12 +2,16 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const bcrypt = require('bcrypt');
+const axios = require('axios');
+const multer = require('multer');
+const FormData = require('form-data');
 const db = require('./database');
 const { renderHistoricoPdfToResponse } = require('./utils/pdf');
 const { SimpleCache } = require('./utils/cache');
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3932;
+const OCRSPACE_API_KEY = process.env.OCRSPACE_API_KEY || '';
 
 const ADMIN_USERNAME = 'administrador';
 const ADMIN_PASSWORD = 'invcco10';
@@ -25,6 +29,12 @@ app.use(session({
     resave: false,
     saveUninitialized: true
 }));
+
+// Upload em memória para OCR
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+});
 
 // Cria tabelas e admin
 db.serialize(() => {
@@ -1126,6 +1136,78 @@ app.get('/ultimo-km/:vtrId', (req, res) => {
             res.json({ km_final: kmFinal });
         });
     });
+});
+
+// API de OCR externo (OCR.Space) para leitura de KM a partir de foto
+app.post('/api/ocr-km', upload.single('foto'), async (req, res) => {
+  try {
+    if (!OCRSPACE_API_KEY) {
+      return res.status(500).json({ success: false, message: 'OCR não configurado no servidor.' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Nenhuma imagem recebida.' });
+    }
+
+    const baseMin = req.body && req.body.baseMin ? parseInt(req.body.baseMin, 10) : 0;
+
+    const form = new FormData();
+    form.append('language', 'por');
+    form.append('isOverlayRequired', 'false');
+    form.append('OCREngine', '2');
+    form.append('scale', 'true');
+    form.append('file', req.file.buffer, {
+      filename: req.file.originalname || 'painel.jpg',
+      contentType: req.file.mimetype || 'image/jpeg'
+    });
+
+    const ocrResponse = await axios.post('https://api.ocr.space/parse/image', form, {
+      headers: {
+        ...form.getHeaders(),
+        apikey: OCRSPACE_API_KEY
+      },
+      timeout: 25000
+    });
+
+    const data = ocrResponse.data;
+    if (!data || data.IsErroredOnProcessing) {
+      const msg = (data && data.ErrorMessage) ? String(data.ErrorMessage) : 'Falha ao processar imagem no OCR.';
+      return res.status(500).json({ success: false, message: msg });
+    }
+
+    const parsedResults = Array.isArray(data.ParsedResults) ? data.ParsedResults : [];
+    const parsedText = parsedResults.length > 0 && parsedResults[0].ParsedText ? parsedResults[0].ParsedText : '';
+    if (!parsedText) {
+      return res.json({ success: false, message: 'Não foi possível ler texto na imagem.' });
+    }
+
+    // Extrair possíveis valores de KM (apenas números de 3 a 7 dígitos)
+    const matches = parsedText.match(/\d{3,7}/g) || [];
+    const candidatos = matches
+      .map(str => parseInt(str, 10))
+      .filter(n => Number.isFinite(n) && n >= 0 && n <= 999999);
+
+    if (!candidatos.length) {
+      return res.json({ success: false, message: 'Nenhum valor de KM plausível encontrado na imagem.' });
+    }
+
+    let escolhidos = candidatos.slice();
+    if (Number.isFinite(baseMin) && baseMin > 0) {
+      const filtrados = candidatos.filter(v => v >= baseMin);
+      if (filtrados.length) {
+        escolhidos = filtrados.sort((a, b) => Math.abs(a - baseMin) - Math.abs(b - baseMin));
+      } else {
+        escolhidos = candidatos.sort((a, b) => b - a);
+      }
+    } else {
+      escolhidos = candidatos.sort((a, b) => b - a);
+    }
+
+    const km = escolhidos[0];
+    return res.json({ success: true, km, rawText: parsedText });
+  } catch (err) {
+    console.error('Erro na rota /api/ocr-km:', err);
+    return res.status(500).json({ success: false, message: 'Erro interno ao processar OCR.' });
+  }
 });
 
 // (Rota de editar KM removida)
