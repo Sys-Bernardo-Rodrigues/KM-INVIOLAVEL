@@ -1236,7 +1236,11 @@
         cameraCampoDestino = campoDestinoId;
         cameraOverlay.classList.remove('hidden');
         cameraStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } },
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+          },
           audio: false
         });
         cameraVideo.srcObject = cameraStream;
@@ -1356,11 +1360,15 @@
         if (!cameraVideo || !cameraCampoDestino) return;
         try {
           const canvas = document.createElement('canvas');
-          canvas.width = cameraVideo.videoWidth || 1280;
-          canvas.height = cameraVideo.videoHeight || 720;
+          const srcW = cameraVideo.videoWidth || 640;
+          const srcH = cameraVideo.videoHeight || 480;
+          const maxW = 800;
+          const scale = Math.min(1, maxW / srcW);
+          canvas.width = Math.round(srcW * scale);
+          canvas.height = Math.round(srcH * scale);
           const ctx = canvas.getContext('2d');
           ctx.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
-          const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+          const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.7));
           pararCamera();
           await extrairKmDaImagem(blob, cameraCampoDestino);
         } catch (err) {
