@@ -1149,10 +1149,13 @@
       });
 
       if (res.ok) {
-        showPopup(sucessoMsg, { reload: true });
+        showPopup(sucessoMsg);
+        setTimeout(() => {
+          location.reload();
+        }, 2500);
       } else {
         const errorText = await res.text();
-        showPopup(errorText || 'Erro ao processar o formulário', { reload: false });
+        showPopup(errorText || 'Erro ao processar o formulário');
       }
     }
 
@@ -1160,7 +1163,7 @@
       e.preventDefault();
       const kmInicial = parseInt(document.getElementById('km_inicial').value);
       if (kmInicial < ultimoKmFinal) {
-        showPopup(`O KM inicial deve ser maior ou igual a ${ultimoKmFinal}.`, { reload: false });
+        showPopup(`O KM inicial deve ser maior ou igual a ${ultimoKmFinal}.`);
         return;
       }
       enviarJsonFormulario(formAbertura, '/abrir-uso', 'Veículo aberto para uso com sucesso!');
@@ -1170,7 +1173,7 @@
       e.preventDefault();
       const kmFinal = parseInt(document.getElementById('km_final').value);
       if (kmInicialAtual !== null && kmFinal < kmInicialAtual) {
-        showPopup('O KM final não pode ser menor que o KM inicial.', { reload: false });
+        showPopup('O KM final não pode ser menor que o KM inicial.');
         return;
       }
       enviarJsonFormulario(formEncerramento, '/encerrar-uso', 'Veículo encerrado com sucesso!');
@@ -1181,16 +1184,16 @@
       enviarJsonFormulario(formReabertura, '/abrir-uso', 'Veículo reaberto para novo uso!');
     });
 
-    function showPopup(texto, options) {
-      const opts = options || {};
-      const shouldReload = !!opts.reload;
+    let popupTimeoutId = null;
+    function showPopup(texto) {
       popupMsgSpan.textContent = texto;
       popupMsg.classList.remove('hidden');
-      setTimeout(() => {
+      if (popupTimeoutId) {
+        clearTimeout(popupTimeoutId);
+      }
+      popupTimeoutId = setTimeout(() => {
         popupMsg.classList.add('hidden');
-        if (shouldReload) {
-          location.reload();
-        }
+        popupTimeoutId = null;
       }, 2500);
     }
 
@@ -1241,7 +1244,7 @@
       } catch (err) {
         console.error('Erro ao acessar câmera:', err);
         cameraOverlay.classList.add('hidden');
-        showPopup('Não foi possível acessar a câmera. Verifique as permissões.', { reload: false });
+        showPopup('Não foi possível acessar a câmera. Verifique as permissões.');
       }
     }
 
@@ -1257,12 +1260,12 @@
     async function extrairKmDaImagem(file, campoDestinoId) {
       if (!file) return;
       if (!window.Tesseract) {
-        showPopup('Leitor de KM indisponível. Verifique sua conexão.', { reload: false });
+        showPopup('Leitor de KM indisponível. Verifique sua conexão.');
         return;
       }
 
       try {
-        showPopup('Lendo KM da foto. Aguarde...', { reload: false });
+        showPopup('Lendo KM da foto. Aguarde...');
         const { data } = await Tesseract.recognize(file, 'eng', {
           logger: () => {}
         });
@@ -1279,7 +1282,7 @@
         });
 
         if (!candidatos.length) {
-          showPopup('Não foi possível identificar um valor de KM na foto. Digite manualmente.', { reload: false });
+          showPopup('Não foi possível identificar um valor de KM na foto. Digite manualmente.');
           return;
         }
 
@@ -1315,10 +1318,10 @@
           campo.value = kmNumero;
           campo.focus();
         }
-        showPopup(`KM identificado automaticamente: ${kmNumero}`, { reload: false });
+        showPopup(`KM identificado automaticamente: ${kmNumero}`);
       } catch (err) {
         console.error('Erro ao ler KM pela foto:', err);
-        showPopup('Erro ao processar a foto. Digite o KM manualmente.', { reload: false });
+        showPopup('Erro ao processar a foto. Digite o KM manualmente.');
       }
     }
 
@@ -1363,7 +1366,7 @@
         } catch (err) {
           console.error('Erro ao capturar foto:', err);
           pararCamera();
-          showPopup('Erro ao capturar a foto. Tente novamente ou digite o KM manualmente.', { reload: false });
+          showPopup('Erro ao capturar a foto. Tente novamente ou digite o KM manualmente.');
         }
       });
     }
